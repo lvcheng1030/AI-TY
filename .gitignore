@@ -1,0 +1,23 @@
+# 依赖
+node_modules/
+
+# 构建产物
+dist/
+dist-ssr/
+.vite/
+*.local
+
+# Python 工具缓存
+__pycache__/
+*.pyc
+
+# 密钥与本机配置（绝不提交）
+.env
+.env.*
+!.env.example
+
+# 日志与系统垃圾
+*.log
+.DS_Store
+Thumbs.db
+Desktop.ini
