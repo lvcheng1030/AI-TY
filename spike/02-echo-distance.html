@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI TY · 回声距离辨识测试</title>
+<style>
+  :root{
+    --bg:#0b0c0e; --fg:#e8e8ea; --dim:#8a8c92; --line:#25272c;
+    --ok:#3ddc84; --bad:#ff5c5c; --warn:#ffb020; --accent:#5aa9ff;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--bg); color:var(--fg);
+    font:16px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+    display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  #app{width:100%; max-width:660px}
+  h1{font-size:22px; margin:0 0 4px}
+  h2{font-size:16px; margin:0 0 12px; color:var(--dim); font-weight:500}
+  p{margin:0 0 12px; color:var(--dim)}
+  .card{border:1px solid var(--line); border-radius:14px; padding:24px; background:#111216}
+  .row{display:flex; gap:10px; flex-wrap:wrap}
+  button{
+    font:inherit; color:var(--fg); background:#1b1d22; border:1px solid var(--line);
+    border-radius:10px; padding:12px 18px; cursor:pointer; transition:.12s;
+  }
+  button:hover:not(:disabled){background:#24262d; border-color:#3a3d45}
+  button:disabled{opacity:.4; cursor:default}
+  button.primary{background:var(--accent); color:#06101d; border-color:var(--accent); font-weight:600}
+  button.primary:hover:not(:disabled){background:#7bc0ff}
+  button.answer{flex:1; min-width:140px; font-size:17px; padding:20px 0}
+  .dim{color:var(--dim)} .big{font-size:15px}
+  #progress{display:flex; justify-content:space-between; color:var(--dim); font-size:14px; margin-bottom:6px}
+  #cond{color:var(--accent); font-size:13px; margin-bottom:14px}
+  #feedback{height:28px; font-size:15px; margin-top:10px}
+  .ok{color:var(--ok)} .bad{color:var(--bad)} .warn{color:var(--warn)}
+  table{width:100%; border-collapse:collapse; font-size:14px; margin:8px 0 16px}
+  th,td{text-align:left; padding:8px 10px; border-bottom:1px solid var(--line)}
+  th{color:var(--dim); font-weight:500}
+  td.num{font-variant-numeric:tabular-nums}
+  pre{background:#0e0f12; border:1px solid var(--line); border-radius:10px; padding:14px;
+      overflow:auto; font-size:12.5px; line-height:1.5; max-height:240px}
+  .verdict{font-size:19px; font-weight:600; margin:12px 0 4px}
+  ul{padding-left:20px; color:var(--dim); font-size:15px}
+  li{margin-bottom:6px}
+  .stage{height:52px; display:flex; align-items:center; gap:10px; color:var(--dim); font-size:15px}
+  .dot{width:9px;height:9px;border-radius:50%;background:#2c2f36}
+  .dot.on{background:var(--accent)}
+</style>
+</head>
+<body>
+<main id="app">
+
+  <section id="screen-intro">
+    <div class="card">
+      <h1>回声距离辨识测试</h1>
+      <h2>盲盒校园：暗夜探险 · 敲杖机制的前提验证</h2>
+
+      <p>这个页面只验证一件事：<strong style="color:var(--fg)">敲一下杖，人耳能不能从"回声"里听出远近。</strong></p>
+
+      <p class="dim big">真实声速下，1 米与 10 米的回声差只有几十毫秒，人耳分辨不了。参考 <span style="color:var(--fg)">finding-echo</span> 的做法，我们把声速<strong style="color:var(--fg)">故意放慢</strong>——这是刻意的风格化处理，不是物理模拟。</p>
+
+      <ul>
+        <li>戴耳机，音量舒适</li>
+        <li>每轮会连着播<strong style="color:var(--fg)">两次敲击</strong>，听哪一次的回声"更远"</li>
+        <li>两个距离固定是 <span style="color:var(--fg)">2 米</span> 与 <span style="color:var(--fg)">8 米</span>，随机排序</li>
+        <li>判断标准：回声<strong style="color:var(--fg)">来得晚、拖尾长</strong>的就是更远</li>
+        <li>共 18 轮，分三组，用来区分"延迟"和"混响"哪个线索有用</li>
+      </ul>
+
+      <div class="row"><button class="primary" id="btn-start">开始</button></div>
+    </div>
+  </section>
+
+  <section id="screen-test" hidden>
+    <div class="card">
+      <div id="progress">
+        <span id="phase-name">第一组</span>
+        <span id="trial-count">1 / 18</span>
+      </div>
+      <div id="cond"></div>
+
+      <div class="stage">
+        <span class="dot" id="dot1"></span><span id="lbl1">第一次敲击</span>
+        <span style="margin:0 8px">·</span>
+        <span class="dot" id="dot2"></span><span id="lbl2">第二次敲击</span>
+      </div>
+
+      <div class="row" style="margin:16px 0 18px">
+        <button id="btn-replay" style="width:100%">再听一遍这一对</button>
+      </div>
+
+      <div class="row">
+        <button class="answer" data-pick="1">第一次更远</button>
+        <button class="answer" data-pick="2">第二次更远</button>
+      </div>
+
+      <div id="feedback"></div>
+    </div>
+  </section>
+
+  <section id="screen-result" hidden>
+    <div class="card">
+      <h1>结果</h1>
+      <div id="verdict" class="verdict"></div>
+      <div id="verdict-note" class="dim"></div>
+      <table id="table"></table>
+
+      <p class="dim big" style="margin-top:16px">整段复制发回，我记进 <span style="font-family:ui-monospace,monospace">docs/test-log.md</span>：</p>
+      <pre id="report"></pre>
+      <div class="row">
+        <button class="primary" id="btn-copy">复制结果</button>
+        <button id="btn-again">再测一次</button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+"use strict";
+
+/* ───────── 距离档位 ─────────
+   真实声速 343 m/s 下 2m 与 8m 的回声只差约 17ms，人耳分辨不了。
+   这里刻意放慢，让延迟成为可感知的线索。 */
+const NEAR = { delay: 0.16, wet: 0.18, decay: 0.25 };   // 2 米
+const FAR  = { delay: 0.64, wet: 0.55, decay: 0.90 };   // 8 米
+
+/* 三组条件：分别考察延迟、混响、以及两者叠加哪个有效 */
+const CONDITIONS = [
+  { key: "A", label: "第一组（只变延迟）",   hint: "回声来得早晚不同，拖尾长短相同",
+    delayVar: true,  reverbVar: false },
+  { key: "B", label: "第二组（只变混响）",   hint: "回声拖尾长短不同，来得早晚相同",
+    delayVar: false, reverbVar: true },
+  { key: "C", label: "第三组（延迟 + 混响）", hint: "两个线索同时变化，最接近实际游戏",
+    delayVar: true,  reverbVar: true }
+];
+const TRIALS_PER_COND = 6;
+const PASS = 0.80, FLOOR = 0.60;
+
+/* ───────── 音频 ───────── */
+let ctx = null, master = null, clickBuf = null, irCache = {};
+
+function initAudio(){
+  if (ctx) return;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  ctx = new AC();
+  master = ctx.createGain();
+  master.gain.value = 0.34;
+  master.connect(ctx.destination);
+
+  const sr = ctx.sampleRate, dur = 0.07, len = Math.floor(sr * dur);
+  clickBuf = ctx.createBuffer(1, len, sr);
+  const d = clickBuf.getChannelData(0);
+  for (let i = 0; i < len; i++){
+    const t = i / sr;
+    const env = Math.exp(-t * 80);              // 敲击：极短、干脆
+    const noise = (Math.random() * 2 - 1) * 0.5;
+    const tone  = Math.sin(2 * Math.PI * 1400 * t) * 0.5;
+    d[i] = (noise + tone) * env;
+  }
+}
+
+/* 合成脉冲响应：越远的表面，混响拖尾越长 */
+function makeIR(decaySeconds){
+  const key = decaySeconds.toFixed(2);
+  if (irCache[key]) return irCache[key];
+  const sr = ctx.sampleRate, len = Math.max(1, Math.floor(sr * decaySeconds));
+  const buf = ctx.createBuffer(2, len, sr);
+  for (let ch = 0; ch < 2; ch++){
+    const d = buf.getChannelData(ch);
+    for (let i = 0; i < len; i++){
+      const k = i / len;
+      d[i] = (Math.random() * 2 - 1) * Math.pow(1 - k, 2.6);
+    }
+  }
+  irCache[key] = buf;
+  return buf;
+}
+
+function profile(level, cond){
+  const isNear = level === "near";
+  const mid = 0.40, midWet = 0.34, midDecay = 0.52;
+  return {
+    delay: cond.delayVar  ? (isNear ? NEAR.delay : FAR.delay)  : mid,
+    wet:   cond.reverbVar ? (isNear ? NEAR.wet   : FAR.wet)    : midWet,
+    decay: cond.reverbVar ? (isNear ? NEAR.decay : FAR.decay)  : midDecay
+  };
+}
+
+function dryTap(when, gainValue){
+  const s = ctx.createBufferSource();
+  s.buffer = clickBuf;
+  const g = ctx.createGain();
+  g.gain.value = gainValue;
+  s.connect(g); g.connect(master);
+  s.start(when);
+}
+
+function echoTap(when, gainValue, decay){
+  const s = ctx.createBufferSource();
+  s.buffer = clickBuf;
+  const g = ctx.createGain();
+  g.gain.value = gainValue;
+  const conv = ctx.createConvolver();
+  conv.buffer = makeIR(decay);
+  const wet = ctx.createGain();
+  wet.gain.value = 1;
+  s.connect(g); g.connect(conv); conv.connect(wet); wet.connect(master);
+  s.start(when);
+}
+
+function playProbe(level, cond){
+  const p = profile(level, cond);
+  const t0 = ctx.currentTime + 0.06;
+  dryTap(t0, 0.95);
+  echoTap(t0 + p.delay, 0.75, p.decay);
+  return p.delay + p.decay + 0.25;             // 返回本次总时长（秒）
+}
+
+/* ───────── 状态 ───────── */
+const state = {
+  cond: null, condIndex: 0, trial: 0,
+  order: [],            // 每题：[第一个, 第二个]
+  answers: [],
+  locked: true,
+  answered: false,
+  gapMs: 1500
+};
+
+/* 递增令牌：新一轮开始时作废上一轮遗留的定时器，
+   否则快速重播会让两轮的播放/解锁互相打架 */
+let pairToken = 0;
+
+const $ = id => document.getElementById(id);
+const show = id => { for (const s of ["screen-intro","screen-test","screen-result"]) $(s).hidden = (s !== id); };
+
+function shuffle(a){
+  for (let i = a.length - 1; i > 0; i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+
+function startCond(i){
+  state.condIndex = i;
+  state.cond = CONDITIONS[i];
+  state.trial = 0;
+  state.order = shuffle(
+    Array.from({ length: TRIALS_PER_COND }, () => (Math.random() < 0.5 ? ["near","far"] : ["far","near"]))
+  );
+  $("phase-name").textContent = state.cond.label;
+  $("cond").textContent = state.cond.hint;
+  show("screen-test");
+  nextTrial();
+}
+
+function setDots(which){
+  $("dot1").className = "dot" + (which >= 1 ? " on" : "");
+  $("dot2").className = "dot" + (which >= 2 ? " on" : "");
+  $("lbl1").textContent = which >= 1 ? "第一次（已播放）" : "第一次敲击";
+  $("lbl2").textContent = which >= 2 ? "第二次（已播放）" : "第二次敲击";
+}
+
+function playPair(){
+  const cond = state.cond;
+  const pair = state.order[state.trial];
+  if (!pair) return;
+
+  const my = ++pairToken;                 // 本轮令牌
+  state.locked = true;
+  state.answered = false;
+  setDots(0);
+  $("feedback").textContent = "";
+  $("btn-replay").disabled = true;
+  document.querySelectorAll(".answer").forEach(b => b.disabled = true);
+
+  const d1 = playProbe(pair[0], cond);
+  setDots(1);
+
+  setTimeout(() => {
+    if (my !== pairToken) return;         // 已被新一轮取代
+    setDots(2);
+    const d2 = playProbe(pair[1], cond);
+    // 等第二声彻底播完（含混响拖尾）再解锁作答
+    setTimeout(() => {
+      if (my !== pairToken || state.answered) return;
+      state.locked = false;
+      $("btn-replay").disabled = false;
+      document.querySelectorAll(".answer").forEach(b => b.disabled = false);
+    }, Math.round(d2 * 1000));
+  }, Math.round(d1 * 1000) + state.gapMs);
+}
+
+function nextTrial(){
+  if (state.trial >= TRIALS_PER_COND){
+    if (state.condIndex + 1 < CONDITIONS.length){ startCond(state.condIndex + 1); return; }
+    finish(); return;
+  }
+  $("trial-count").textContent = (state.trial + 1) + " / " + TRIALS_PER_COND;
+  playPair();
+}
+
+function answer(pick){
+  if (state.locked || state.answered) return;
+  state.answered = true;
+  state.locked = true;
+  const pair = state.order[state.trial];
+  const firstIsNear = pair[0] === "near";
+  const farIsFirst = !firstIsNear;
+  const correctPick = farIsFirst ? "1" : "2";
+  const right = pick === correctPick;
+
+  state.answers.push({ cond: state.cond.key, pick, correct: right });
+
+  const fb = $("feedback");
+  fb.textContent = right ? "✓ 对" : ("✗ 更远的是第 " + correctPick + " 次");
+  fb.className = right ? "ok" : "bad";
+
+  state.trial++;
+  setTimeout(nextTrial, right ? 600 : 1000);
+}
+
+/* ───────── 结算 ───────── */
+function tally(key){
+  const rows = state.answers.filter(a => a.cond === key);
+  const hit = rows.filter(a => a.correct).length;
+  return { total: rows.length, hit, acc: rows.length ? hit / rows.length : 0 };
+}
+const pct = x => (x * 100).toFixed(0) + "%";
+
+function finish(){
+  const res = {};
+  for (const c of CONDITIONS) res[c.key] = tally(c.key);
+  const c = res.C, a = res.A, b = res.B;
+
+  let verdict, cls, note;
+  if (c.acc >= PASS){
+    verdict = "敲杖机制成立（" + pct(c.acc) + "）"; cls = "ok";
+    note = "延迟与混响叠加时距离可辨。按原计划实现敲杖探测：延迟 + 混响共同表达距离。";
+  } else if (c.acc >= FLOOR){
+    verdict = "边缘（" + pct(c.acc) + "）"; cls = "warn";
+    note = "方向对但不稳。建议把距离档位从连续值降到 3 档（近/中/远），并让 AI 助手在敲杖后用一句话确认距离。";
+  } else {
+    verdict = "不成立（" + pct(c.acc) + "）"; cls = "bad";
+    note = "叠加上仍分辨不出。敲杖改为降级方案：只提示有无障碍，距离由 AI 助手直接播报（例如「前方约两米有自行车」），空间声像只负责左右。";
+  }
+  // 补充：单线索优劣
+  if (a.acc > c.acc && a.acc >= FLOOR) note += " 注意：仅延迟组的正确率高于叠加组，实现时应以延迟为主线索。";
+  if (b.acc > c.acc && b.acc >= FLOOR) note += " 注意：仅混响组的正确率高于叠加组，实现时应以混响为主线索。";
+
+  $("verdict").textContent = verdict;
+  $("verdict").className = "verdict " + cls;
+  $("verdict-note").textContent = note;
+
+  $("table").innerHTML =
+    "<tr><th>条件</th><th>次数</th><th>正确</th><th>准确率</th></tr>" +
+    CONDITIONS.map(k =>
+      "<tr><td>" + k.label.replace(/（.*/, "") + "</td><td class='num'>" + res[k.key].total +
+      "</td><td class='num'>" + res[k.key].hit + "</td><td class='num'>" + pct(res[k.key].acc) + "</td></tr>"
+    ).join("");
+
+  const now = new Date(), pad = n => String(n).padStart(2, "0");
+  const stamp = now.getFullYear() + "-" + pad(now.getMonth()+1) + "-" + pad(now.getDate()) +
+                " " + pad(now.getHours()) + ":" + pad(now.getMinutes());
+  const lines = [
+    "【回声距离辨识测试】" + stamp,
+    "浏览器: " + navigator.userAgent,
+    "距离档位: 2 米 vs 8 米（延迟 " + NEAR.delay + "s vs " + FAR.delay + "s，刻意放慢声速）",
+    "",
+    CONDITIONS.map(k =>
+      k.label + "  " + res[k.key].hit + "/" + res[k.key].total + "  (" + pct(res[k.key].acc) + ")"
+    ).join("\n"),
+    "",
+    "判定: " + verdict + "   (通过线 " + pct(PASS) + " / 底线 " + pct(FLOOR) + ")"
+  ];
+  $("report").textContent = lines.join("\n");
+  show("screen-result");
+}
+
+/* ───────── 事件 ───────── */
+$("btn-start").addEventListener("click", async () => {
+  initAudio();
+  if (ctx.state === "suspended") await ctx.resume();
+  state.answers = [];
+  startCond(0);
+});
+
+$("btn-replay").addEventListener("click", () => {
+  if (!state.answered) playPair();
+});
+
+document.querySelectorAll(".answer").forEach(btn => {
+  btn.addEventListener("click", () => answer(btn.dataset.pick));
+});
+
+$("btn-again").addEventListener("click", () => { state.answers = []; show("screen-intro"); });
+
+$("btn-copy").addEventListener("click", async () => {
+  const text = $("report").textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    $("btn-copy").textContent = "已复制";
+    setTimeout(() => { $("btn-copy").textContent = "复制结果"; }, 1500);
+  } catch (e) {
+    const r = document.createRange(); r.selectNodeContents($("report"));
+    const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+    $("btn-copy").textContent = "已选中，按 Ctrl+C";
+  }
+});
+
+document.addEventListener("keydown", e => {
+  if ($("screen-test").hidden) return;
+  if (e.key === "1") answer("1");
+  if (e.key === "2") answer("2");
+  if (e.key === "r") { if (!state.answered) playPair(); }
+});
+</script>
+</body>
+</html>
