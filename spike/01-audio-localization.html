@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI TY · 空间音频定位测试（go / no-go）</title>
+<style>
+  :root{
+    --bg:#0b0c0e; --fg:#e8e8ea; --dim:#8a8c92; --line:#25272c;
+    --ok:#3ddc84; --bad:#ff5c5c; --warn:#ffb020; --accent:#5aa9ff;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--bg); color:var(--fg);
+    font:16px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+    display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  #app{width:100%; max-width:640px}
+  h1{font-size:22px; margin:0 0 4px; letter-spacing:.02em}
+  h2{font-size:16px; margin:0 0 12px; color:var(--dim); font-weight:500}
+  p{margin:0 0 12px; color:var(--dim)}
+  .card{border:1px solid var(--line); border-radius:14px; padding:24px; background:#111216}
+  .row{display:flex; gap:10px; flex-wrap:wrap}
+  button{
+    font:inherit; color:var(--fg); background:#1b1d22; border:1px solid var(--line);
+    border-radius:10px; padding:12px 18px; cursor:pointer; transition:.12s;
+  }
+  button:hover:not(:disabled){background:#24262d; border-color:#3a3d45}
+  button:disabled{opacity:.4; cursor:default}
+  button.primary{background:var(--accent); color:#06101d; border-color:var(--accent); font-weight:600}
+  button.primary:hover:not(:disabled){background:#7bc0ff}
+  button.answer{flex:1; min-width:96px; font-size:18px; padding:18px 0}
+  .mono{font-family:ui-monospace,Consolas,monospace}
+  .dim{color:var(--dim)}
+  .big{font-size:15px}
+  #progress{display:flex; justify-content:space-between; color:var(--dim); font-size:14px; margin-bottom:16px}
+  #feedback{height:28px; font-size:15px; margin-top:8px}
+  .ok{color:var(--ok)} .bad{color:var(--bad)} .warn{color:var(--warn)}
+  table{width:100%; border-collapse:collapse; font-size:14px; margin:8px 0 16px}
+  th,td{text-align:left; padding:8px 10px; border-bottom:1px solid var(--line)}
+  th{color:var(--dim); font-weight:500}
+  td.num{font-variant-numeric:tabular-nums}
+  pre{
+    background:#0e0f12; border:1px solid var(--line); border-radius:10px;
+    padding:14px; overflow:auto; font-size:12.5px; line-height:1.5; max-height:260px;
+  }
+  .verdict{font-size:19px; font-weight:600; margin:12px 0 4px}
+  ul{padding-left:20px; color:var(--dim); font-size:15px}
+  li{margin-bottom:6px}
+  kbd{background:#22242a; border:1px solid #3a3d45; border-bottom-width:2px; border-radius:5px; padding:1px 6px; font-size:13px}
+</style>
+</head>
+<body>
+<main id="app">
+
+  <!-- ① 说明页 -->
+  <section id="screen-intro">
+    <div class="card">
+      <h1>空间音频定位测试</h1>
+      <h2>盲盒校园：暗夜探险 · 技术验证（go / no-go）</h2>
+
+      <p>这个页面只验证一件事：<strong style="color:var(--fg)">戴上耳机，人耳能不能分辨左、前、右三个方向的声源。</strong>能，整套设计成立；不能，全部要改。</p>
+
+      <ul>
+        <li>戴上耳机，<strong style="color:var(--fg)">左右不要戴反</strong></li>
+        <li>面朝屏幕坐正，<strong style="color:var(--fg)">测试全程不要转头</strong>（转头会破坏测试有效性）</li>
+        <li>一共 18 次盲测，听声音后点左 / 前 / 右</li>
+        <li>之后还有 8 次"前 vs 后"测试，专门检查人耳天生分不清前后这件事</li>
+      </ul>
+
+      <p class="dim big">声音由浏览器实时合成，不需要任何素材文件。音量已控制在安全范围，但仍建议先用系统音量调到舒适。</p>
+
+      <div class="row">
+        <button class="primary" id="btn-start">开始（会先播一下测试音）</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ② 测试页 -->
+  <section id="screen-test" hidden>
+    <div class="card">
+      <div id="progress">
+        <span id="phase-name">左 / 前 / 右</span>
+        <span id="trial-count">1 / 18</span>
+      </div>
+
+      <div class="row" style="margin-bottom:18px">
+        <button id="btn-replay" style="width:100%">再听一次</button>
+      </div>
+
+      <div class="row" id="answers"></div>
+
+      <div id="feedback"></div>
+    </div>
+  </section>
+
+  <!-- ③ 结果页 -->
+  <section id="screen-result" hidden>
+    <div class="card">
+      <h1>结果</h1>
+      <div id="verdict" class="verdict"></div>
+      <div id="verdict-note" class="dim"></div>
+
+      <table id="table-a"></table>
+      <table id="table-b"></table>
+
+      <p class="dim big" style="margin-top:16px">把下面这段整段复制发回，我记进 <span class="mono">docs/test-log.md</span>：</p>
+      <pre id="report"></pre>
+      <div class="row">
+        <button class="primary" id="btn-copy">复制结果</button>
+        <button id="btn-again">再测一次</button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+"use strict";
+
+/* ─────────────────────────── 常量 ─────────────────────────── */
+
+const DIST = 2.0;               // 声源距听者 2 米
+const POS = {
+  left:  [-DIST, 0, 0],
+  front: [0, 0, -DIST],         // Web Audio 中听者默认朝 -Z
+  right: [DIST, 0, 0],
+  back:  [0, 0, DIST]
+};
+
+const PHASE_A = { key: "A", label: "左 / 前 / 右", dirs: ["left", "front", "right"], perDir: 6 };
+const PHASE_B = { key: "B", label: "前 / 后",      dirs: ["front", "back"],        perDir: 4 };
+
+const LABEL = { left: "左", front: "前", right: "右", back: "后" };
+
+// 判定线：与排期里的 go/no-go 保持一致
+const PASS = 0.80, FLOOR = 0.60;
+
+/* ─────────────────────────── 音频 ─────────────────────────── */
+
+let ctx = null, master = null, clickBuf = null;
+
+function initAudio(){
+  if (ctx) return;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  ctx = new AC();
+  master = ctx.createGain();
+  master.gain.value = 0.35;                  // 安全音量
+  master.connect(ctx.destination);
+
+  // 合成一个短促的"敲击声"：宽带噪声 + 一个中心频率，
+  // 宽带成分是人耳定位的关键，纯音会显著降低定位准确率。
+  const sr = ctx.sampleRate, dur = 0.13, len = Math.floor(sr * dur);
+  clickBuf = ctx.createBuffer(1, len, sr);
+  const d = clickBuf.getChannelData(0);
+  for (let i = 0; i < len; i++){
+    const t = i / sr;
+    const env = Math.exp(-t * 34);            // 快起快落
+    const noise = (Math.random() * 2 - 1) * 0.45;
+    const tone  = Math.sin(2 * Math.PI * 1150 * t) * 0.55;
+    d[i] = (noise + tone) * env;
+  }
+}
+
+function setPos(panner, x, y, z){
+  if (panner.positionX){                     // 现代浏览器
+    panner.positionX.setValueAtTime(x, ctx.currentTime);
+    panner.positionY.setValueAtTime(y, ctx.currentTime);
+    panner.positionZ.setValueAtTime(z, ctx.currentTime);
+  } else if (panner.setPosition){            // 旧版 Safari
+    panner.setPosition(x, y, z);
+  }
+}
+
+function playAt(dir){
+  if (!ctx || !clickBuf) return;
+  const src = ctx.createBufferSource();
+  src.buffer = clickBuf;
+
+  const p = ctx.createPanner();
+  p.panningModel = "HRTF";                   // 关键：头相关传输函数，而不是左右声道等功率
+  p.distanceModel = "inverse";
+  p.refDistance = 1;
+  p.rolloffFactor = 0.5;
+  p.maxDistance = 30;
+
+  const [x, y, z] = POS[dir];
+  setPos(p, x, y, z);
+
+  src.connect(p);
+  p.connect(master);
+  src.start();
+}
+
+/* ─────────────────────────── 状态 ─────────────────────────── */
+
+const state = {
+  phase: null,          // PHASE_A / PHASE_B
+  queue: [],            // 当前阶段的题目（已洗牌）
+  index: 0,
+  answers: [],          // {phase, target, answer}
+  startedAt: null,
+  locked: false         // 防止答完瞬间重复点击
+};
+
+const $ = id => document.getElementById(id);
+const show = id => {
+  for (const s of ["screen-intro", "screen-test", "screen-result"]){
+    $(s).hidden = (s !== id);
+  }
+};
+
+/* ─────────────────────────── 出题 ─────────────────────────── */
+
+function shuffle(a){
+  for (let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function buildQueue(phase){
+  const q = [];
+  for (const dir of phase.dirs){
+    for (let i = 0; i < phase.perDir; i++) q.push(dir);
+  }
+  return shuffle(q);
+}
+
+function startPhase(phase){
+  state.phase = phase;
+  state.queue = buildQueue(phase);
+  state.index = 0;
+  $("phase-name").textContent = phase.label;
+  renderAnswers(phase.dirs);
+  show("screen-test");
+  nextTrial();
+}
+
+function renderAnswers(dirs){
+  const box = $("answers");
+  box.innerHTML = "";
+  dirs.forEach(dir => {
+    const b = document.createElement("button");
+    b.className = "answer";
+    b.textContent = LABEL[dir];
+    b.dataset.dir = dir;
+    b.addEventListener("click", () => answer(dir));
+    box.appendChild(b);
+  });
+}
+
+function nextTrial(){
+  if (state.index >= state.queue.length){
+    if (state.phase === PHASE_A) { startPhase(PHASE_B); return; }
+    finish();
+    return;
+  }
+  state.locked = false;
+  $("feedback").textContent = "";
+  $("trial-count").textContent = (state.index + 1) + " / " + state.queue.length;
+  playAt(state.queue[state.index]);
+}
+
+function answer(dir){
+  if (state.locked) return;
+  state.locked = true;
+
+  const target = state.queue[state.index];
+  const correct = dir === target;
+  state.answers.push({ phase: state.phase.key, target, answer: dir });
+
+  const fb = $("feedback");
+  fb.textContent = correct ? "✓ 对" : "✗ 实际是" + LABEL[target];
+  fb.className = correct ? "ok" : "bad";
+
+  state.index++;
+  setTimeout(nextTrial, correct ? 450 : 900);
+}
+
+/* ─────────────────────────── 结算 ─────────────────────────── */
+
+function tally(phaseKey){
+  const dirs = phaseKey === "A" ? PHASE_A.dirs : PHASE_B.dirs;
+  const rows = state.answers.filter(a => a.phase === phaseKey);
+  const total = rows.length;
+  const hit = rows.filter(a => a.target === a.answer).length;
+
+  // 每个方向：题目数 / 正确数
+  const per = {};
+  for (const d of dirs){
+    const all = rows.filter(a => a.target === d);
+    per[d] = { total: all.length, hit: all.filter(a => a.answer === d).length };
+  }
+  // 混淆：实际 d → 答成了什么
+  const confusion = {};
+  for (const a of rows){
+    if (a.target === a.answer) continue;
+    const k = a.target + "→" + a.answer;
+    confusion[k] = (confusion[k] || 0) + 1;
+  }
+  return { total, hit, acc: total ? hit / total : 0, per, confusion };
+}
+
+function pct(x){ return (x * 100).toFixed(0) + "%"; }
+
+function finish(){
+  const a = tally("A");
+  const b = tally("B");
+
+  // 判定
+  let verdict, cls, note;
+  if (a.acc >= PASS){
+    verdict = "通过（" + pct(a.acc) + "）";
+    cls = "ok";
+    note = "三个方向可分辨，方案成立。可以按计划做 HRTF 空间音频。";
+  } else if (a.acc >= FLOOR){
+    verdict = "边缘（" + pct(a.acc) + "）";
+    cls = "warn";
+    note = "勉强可分辨但不稳。需要加两个补偿：① 开场 30 秒方位校准；② 提供转身动作让人耳自行消除前后歧义。设计仍可成立，但声源布局要比原计划更稀疏。";
+  } else {
+    verdict = "不通过（" + pct(a.acc) + "）";
+    cls = "bad";
+    note = "人耳在你的设备上无法稳定分辨方向。建议转 Plan B：键盘主导 + 语音只保留「读告示牌」，空间音频降级为氛围层。";
+  }
+
+  $("verdict").textContent = verdict;
+  $("verdict").className = "verdict " + cls;
+  $("verdict-note").textContent = note;
+
+  // 表格
+  const tA = $("table-a");
+  tA.innerHTML = "<tr><th>左 / 前 / 右</th><th>次数</th><th>正确</th><th>准确率</th></tr>" +
+    PHASE_A.dirs.map(d =>
+      "<tr><td>" + LABEL[d] + "</td><td class='num'>" + a.per[d].total +
+      "</td><td class='num'>" + a.per[d].hit + "</td><td class='num'>" +
+      pct(a.per[d].total ? a.per[d].hit / a.per[d].total : 0) + "</td></tr>"
+    ).join("") +
+    "<tr><td><strong>合计</strong></td><td class='num'>" + a.total +
+    "</td><td class='num'>" + a.hit + "</td><td class='num'><strong>" + pct(a.acc) + "</strong></td></tr>";
+
+  const tB = $("table-b");
+  tB.innerHTML = "<tr><th>前 / 后</th><th>次数</th><th>正确</th><th>准确率</th></tr>" +
+    PHASE_B.dirs.map(d =>
+      "<tr><td>" + LABEL[d] + "</td><td class='num'>" + b.per[d].total +
+      "</td><td class='num'>" + b.per[d].hit + "</td><td class='num'>" +
+      pct(b.per[d].total ? b.per[d].hit / b.per[d].total : 0) + "</td></tr>"
+    ).join("") +
+    "<tr><td><strong>合计</strong></td><td class='num'>" + b.total +
+    "</td><td class='num'>" + b.hit + "</td><td class='num'><strong>" + pct(b.acc) + "</strong></td></tr>";
+
+  // 文本报告
+  const now = new Date();
+  const pad = n => String(n).padStart(2, "0");
+  const stamp = now.getFullYear() + "-" + pad(now.getMonth() + 1) + "-" + pad(now.getDate()) +
+                " " + pad(now.getHours()) + ":" + pad(now.getMinutes());
+
+  const confA = Object.keys(a.confusion).map(k => k + "×" + a.confusion[k]).join("  ") || "无";
+  const confB = Object.keys(b.confusion).map(k => k + "×" + b.confusion[k]).join("  ") || "无";
+
+  const lines = [
+    "【空间音频定位测试】" + stamp,
+    "浏览器: " + navigator.userAgent,
+    "",
+    "相位A 左/前/右  共 " + a.total + " 次  正确 " + a.hit + "  (" + pct(a.acc) + ")",
+    "  " + PHASE_A.dirs.map(d => LABEL[d] + " " + a.per[d].hit + "/" + a.per[d].total).join("   "),
+    "  混淆: " + confA,
+    "",
+    "相位B 前/后    共 " + b.total + " 次  正确 " + b.hit + "  (" + pct(b.acc) + ")",
+    "  " + PHASE_B.dirs.map(d => LABEL[d] + " " + b.per[d].hit + "/" + b.per[d].total).join("   "),
+    "  混淆: " + confB,
+    "",
+    "判定: " + verdict + "   (通过线 " + pct(PASS) + " / 底线 " + pct(FLOOR) + ")"
+  ];
+  $("report").textContent = lines.join("\n");
+
+  show("screen-result");
+}
+
+/* ─────────────────────────── 事件 ─────────────────────────── */
+
+$("btn-start").addEventListener("click", async () => {
+  initAudio();
+  if (ctx.state === "suspended") await ctx.resume();
+  state.startedAt = Date.now();
+  startPhase(PHASE_A);
+});
+
+$("btn-replay").addEventListener("click", () => {
+  if (!state.locked && state.queue[state.index]) playAt(state.queue[state.index]);
+});
+
+$("btn-again").addEventListener("click", () => {
+  state.answers = [];
+  state.startedAt = null;
+  show("screen-intro");
+});
+
+$("btn-copy").addEventListener("click", async () => {
+  const text = $("report").textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    $("btn-copy").textContent = "已复制";
+    setTimeout(() => { $("btn-copy").textContent = "复制结果"; }, 1500);
+  } catch (e) {
+    // file:// 下剪贴板 API 可能被拒，退化为手动全选
+    const r = document.createRange();
+    r.selectNodeContents($("report"));
+    const s = window.getSelection();
+    s.removeAllRanges();
+    s.addRange(r);
+    $("btn-copy").textContent = "已选中，按 Ctrl+C";
+  }
+});
+
+// 键盘：1/2/3 或 左/前/右 对应按钮，方便闭眼操作
+document.addEventListener("keydown", e => {
+  if ($("screen-test").hidden) return;
+  const n = { "1": 0, "2": 1, "3": 2 }[e.key];
+  if (n === undefined) return;
+  const btns = $("answers").querySelectorAll("button");
+  if (btns[n]) btns[n].click();
+});
+</script>
+</body>
+</html>
