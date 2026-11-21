@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>盲盒校园：暗夜探险</title>
+<meta name="description" content="纯音频驱动的无障碍主题互动游戏。戴上耳机，屏幕全黑。">
+<meta name="color-scheme" content="dark">
+<style>
+  /* T0 只放最基础的样式，具体界面由 T6 负责（src/ui/screens.js）。
+     现在保持全黑，符合作品立意。 */
+  :root { color-scheme: dark; }
+  html, body {
+    margin: 0; height: 100%;
+    background: #000; color: #e8e8ea;
+    font: 16px/1.6 -apple-system, "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  }
+  body { display: flex; align-items: center; justify-content: center; }
+  #app { max-width: 640px; padding: 24px; }
+  /* 键盘焦点必须可见 —— 无障碍硬性要求 */
+  :focus-visible { outline: 3px solid #5aa9ff; outline-offset: 2px; }
+</style>
+</head>
+<body>
+
+  <!-- T6 会在这里构建四个屏幕：开始页 / 校准页 / 游戏中 / 结算页 -->
+  <main id="app"></main>
+
+  <!-- 无障碍实时区域：T6 的 a11y.announce() 会把关键状态写进这里 -->
+  <div id="a11y-live" role="status" aria-live="polite" aria-atomic="true"
+       style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;"></div>
+
+  <!-- 唯一的入口。所有模块由 main.js 统一 import，
+       之后新增功能不再需要改动本文件 —— 这是避免合并冲突的关键。 -->
+  <script type="module" src="./src/main.js"></script>
+
+</body>
+</html>
