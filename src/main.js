@@ -195,6 +195,9 @@ function startLoop() {
   // 为什么必须同一个 tick：听者位置落后于玩家位置哪怕一帧，
   // 声像就会偏；而脚步声如果用自己的计时器，会与移动速度脱节，
   // 玩家就会听到"没在走却有脚步声"。
+  // 上一帧位置：用来由位移推算速度。缺这一步，脚步永远不响。
+  let lastX = null, lastZ = null;
+
   ctx.loop = createLoop({
     fps: 60,
     onTick: (dt) => {
@@ -202,6 +205,17 @@ function startLoop() {
 
       const p = player.getState();
       audio.setListener({ x: p.x, z: p.z, heading: p.heading });
+
+      // 脚步节拍需要知道"走多快"：engine.js 的 updateFootsteps 在
+      // speed < 0.05 时直接返回，所以不喂速度就等于永远没有脚步声。
+      // 用位移推算而不是让 player.js 调 audio，是为了保住 T2 的
+      // player.js 不依赖音频模块（纯逻辑可测）。
+      if (lastX !== null && dt > 0) {
+        audio.setSpeed(Math.hypot(p.x - lastX, p.z - lastZ) / dt);
+      }
+      lastX = p.x;
+      lastZ = p.z;
+
       audio.updateFootsteps(dt);
     }
   });
