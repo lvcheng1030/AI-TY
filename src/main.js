@@ -17,6 +17,7 @@ import { EVENTS, INTENTS, SURFACES, CONFIDENCE } from './core/contracts.js';
 
 // —— T1 空间音频 ——
 import * as audio from './audio/engine.js';
+import * as probe from './audio/probe.js';
 // —— T2 移动 / 碰撞 / 场景 ——
 import * as player from './world/player.js';
 import * as scene from './world/scene.js';
@@ -50,8 +51,7 @@ function boot() {
   session.init();
   tasks.init();
 
-  // 3) 音频与台词（此时还没有用户手势，只做准备工作，不要在这里创建 AudioContext）
-  audio.init();
+  // 3) 台词模块（只做准备，不创建 AudioContext）
   voice.init();
 
   // 4) 语音识别：不支持也不影响启动，只是走降级通道
@@ -60,18 +60,27 @@ function boot() {
     emit(EVENTS.DEGRADE_ON, { reason: asrState?.reason || 'unsupported' });
   }
 
-  // 5) 载入场景，然后初始化玩家。
+  // 5) 音频解锁：浏览器禁止无用户手势出声，所以挂一次性监听。
+  //    必须在载入场景【之前】把探测函数注入好，否则第一次敲杖会落空。
+  audio.setProbeFunction(probe.probeCone);
+  armAudioUnlock();
+
+  // 6) 载入场景，然后初始化玩家。
   //    顺序不能反：player.init() 要读场景起点与障碍物。
   //    场景文件由 T3 提供；还没有时保持 null，游戏仍能启动（只是没有关卡）。
   loadScene().then((loaded) => {
     if (loaded) {
       player.init();
+      const s = scene.getCurrent();
       console.info('[main] 场景就绪，可操作', {
-        起点: scene.getCurrent()?.start,
-        障碍物数: scene.getCurrent()?.obstacles.length,
-        告示牌数: scene.getCurrent()?.signs.length,
-        任务数: scene.getCurrent()?.tasks.length
+        起点: s?.start,
+        障碍物数: s?.obstacles.length,
+        告示牌数: s?.signs.length,
+        任务数: s?.tasks.length
       });
+
+      // 环境声：此时音频可能还没解锁，playAmbience 会在解锁后补建
+      pendingAmbience = s?.emitters || [];
     } else {
       console.info('[main] 尚无场景数据（content/scene1.json），' +
                    '移动与音频模块不会启动。这是 T3 尚未交付时的正常状态。');
@@ -80,6 +89,44 @@ function boot() {
     startLoop();
   });
 }
+
+/** 待建立的环境声源（等音频解锁后补建） */
+let pendingAmbience = [];
+
+/**
+ * 挂一次性监听，在首次用户交互时解锁音频。
+ *
+ * 用三个事件是因为不同浏览器的"可信手势"定义不同：
+ * 桌面多为 click / keydown，移动端可能是 touchstart。
+ * once + 手动清理，确保只解锁一次。
+ */
+function armAudioUnlock() {
+  const unlock = () => {
+    const r = audio.init();
+    if (r && r.ok) {
+      console.info('[main] 音频已解锁', { sampleRate: r.sampleRate, state: r.state });
+      if (pendingAmbience.length > 0) {
+        const amb = audio.playAmbience(pendingAmbience);
+        console.info(`[main] 已建立环境声源 ${amb.created} 个` +
+                     (amb.missing.length ? `（缺失素材：${amb.missing.join(', ')}）` : ''));
+        pendingAmbience = [];
+      }
+    } else {
+      console.warn('[main] 音频解锁失败：', r && r.reason);
+    }
+    cleanup();
+  };
+
+  const cleanup = () => {
+    for (const evt of EVENTS_TO_UNLOCK) window.removeEventListener(evt, unlock);
+  };
+
+  for (const evt of EVENTS_TO_UNLOCK) {
+    window.addEventListener(evt, unlock, { once: false, passive: true });
+  }
+}
+
+const EVENTS_TO_UNLOCK = ['pointerdown', 'keydown', 'touchstart'];
 
 /**
  * 载入 content/scene1.json。
@@ -104,8 +151,11 @@ async function loadScene() {
 }
 
 function startLoop() {
-  // 循环：把「移动」和「音频听者位置」绑在同一个 tick 上。
-  // 这是刻意设计 —— 两者不同步会导致声音位置与玩家位置错位。
+  // 循环：把「移动」「音频听者」「脚步节拍」绑在同一个 tick 上。
+  //
+  // 为什么必须同一个 tick：听者位置落后于玩家位置哪怕一帧，
+  // 声像就会偏；而脚步声如果用自己的计时器，会与移动速度脱节，
+  // 玩家就会听到"没在走却有脚步声"。
   ctx.loop = createLoop({
     fps: 60,
     onTick: (dt) => {
@@ -113,6 +163,7 @@ function startLoop() {
 
       const p = player.getState();
       audio.setListener({ x: p.x, z: p.z, heading: p.heading });
+      audio.updateFootsteps(dt);
     }
   });
   ctx.loop.start();
