@@ -579,6 +579,20 @@ function subscribeEvents() {
     if (p && p.type) setSurface(p.type);
   });
 
+  // 玩家移动 → 更新速度，脚步节拍靠它定步频。
+  //
+  // 【这里曾经漏掉，导致脚步声一直不响】
+  // 原实现只订阅了 SURFACE_CHANGED，footsteps.speed 永远是 0，
+  // 而 updateFootsteps() 开头就是 `if (speed < 0.05) return`，
+  // 于是三种路面音色都做对了，却一次都没响过。
+  //
+  // 速度由 T2 的 player.js 通过事件带出（它自己知道确切 dt 与位移），
+  // 而不是在这里从帧间位置反推 —— 反推会受 dt 抖动影响，
+  // 且传送会产生巨大速度值。
+  bus.on(EVENTS.PLAYER_MOVED, (p) => {
+    if (p && typeof p.speed === 'number') setSpeed(p.speed);
+  });
+
   // 撞到东西 → 提示音
   bus.on(EVENTS.PLAYER_BLOCKED, () => playSfx('blocked', { gain: 0.5 }));
 }

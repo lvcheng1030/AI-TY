@@ -33,7 +33,14 @@ export const CONFIG = Object.freeze({
   DEVIATION_COOLDOWN: 6,// 两次偏离提示的最小间隔，秒
   BLOCKED_COOLDOWN: 1.2,// 两次碰撞提示的最小间隔，秒
   PULSE_MOVE: 1.5,      // 语音"往前走"持续多久
-  PULSE_TURN: 1.0       // 语音"左转"持续多久（90°/s × 1s = 90°）
+  PULSE_TURN: 1.0,      // 语音"左转"持续多久（90°/s × 1s = 90°）
+
+  /**
+   * 速度上限（米/秒）。超过它的一律当作传送，不算行走。
+   * 正常步行 1.2、后退 0.6，所以 5 留了大量余量；
+   * 而 teleport 会产生数十甚至上百的瞬时值，若不排除会让脚步声失控。
+   */
+  MAX_SPEED: 5
 });
 
 /* ------------------------- 内部状态 ------------------------- */
@@ -112,6 +119,8 @@ export function update(dt) {
   }
 
   // 2) 先算期望位置
+  const prevX = state.x;
+  const prevZ = state.z;
   const next = integrate(state, input, dt);
 
   // 3) 碰撞修正
@@ -132,6 +141,15 @@ export function update(dt) {
   state.z = fixed.z;
   state.heading = normalize360(next.heading);
 
+  // 4.5) 计算真实速度，供脚步声定步频。
+  //
+  // 用【实际发生的位移】而不是输入意图：撞墙时输入仍是"前进"，
+  // 但人没动，就不该有脚步声。这是"贴着墙走却没有脚步声"的正确表现。
+  const moved = Math.hypot(state.x - prevX, state.z - prevZ);
+  // 传送会算出巨大速度（上一帧还在原地），此时按静止处理
+  const rawSpeed = dt > 0 ? moved / dt : 0;
+  currentSpeed = rawSpeed > CONFIG.MAX_SPEED ? 0 : rawSpeed;
+
   // 5) 路面变化（只在变化时发，不是每帧）
   const s = scene.surfaceAt(state);
   if (s !== state.surface) {
@@ -144,10 +162,22 @@ export function update(dt) {
   checkDeviation();
 
   // 7) 位置广播（T1 的音频听者靠它同步）
+  //
+  // speed 由本模块自己算并带出去，而不是让调用方从位置反推：
+  //   1. 这里知道确切的 dt 和位移，反推会引入噪声（dt 抖动）
+  //   2. 传送（teleport）会造成巨大速度，只有本模块知道那是传送而非行走
+  // T1 的脚步声依赖它决定步频 —— 之前漏了这个字段，导致脚步声一直不响。
   emit(EVENTS.PLAYER_MOVED, {
-    x: state.x, z: state.z, heading: state.heading, surface: state.surface
+    x: state.x, z: state.z, heading: state.heading,
+    surface: state.surface, speed: currentSpeed
   });
 }
+
+/** 当前实际移动速度（米/秒）。撞墙或静止时为 0。 */
+let currentSpeed = 0;
+
+/** 判定"是不是在走"的速度下限 —— 低于它不发出脚步声 */
+export const WALK_SPEED_THRESHOLD = 0.05;
 
 /** 判断这次阻挡是否由玩家主动移动造成（而不是被墙推着） */
 function blockedByMovement(desired, fixed) {
@@ -281,7 +311,10 @@ function clearTurn() {
 
 /** 当前状态快照 */
 export function getState() {
-  return { x: state.x, z: state.z, heading: state.heading, surface: state.surface };
+  return {
+    x: state.x, z: state.z, heading: state.heading,
+    surface: state.surface, speed: currentSpeed
+  };
 }
 
 /** 直接设置位置（调试用，不改朝向） */
