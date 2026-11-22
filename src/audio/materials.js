@@ -70,19 +70,42 @@ async function loadOne(ctx, dir, name) {
     const res = await fetch(url, { cache: 'force-cache' });
     if (!res.ok) { missingSet.add(name); return { ok: false, name }; }
     const arr = await res.arrayBuffer();
-
-    // 用 Promise 包住 decodeAudioData：旧版 Safari 只支持回调式
-    const buf = await new Promise((resolve, reject) => {
-      const p = ctx.decodeAudioData(arr, resolve, reject);
-      if (p && typeof p.then === 'function') p.then(resolve, reject);
-    });
-
+    const buf = await decode(ctx, arr);
+    if (!buf) { missingSet.add(name); return { ok: false, name }; }
     buffers.set(name, buf);
     return { ok: true, name };
   } catch (_) {
     missingSet.add(name);
     return { ok: false, name };
   }
+}
+
+/**
+ * 解码音频，只走一条路径。
+ *
+ * 关键：不能同时挂回调与 Promise。两者都会触发，
+ * 而 Promise 形式的 decodeAudioData 在回调被调用后可能不再落定，
+ * 导致 await 永久挂起（实测踩到：缓冲已生成，Promise 却不返回）。
+ * 所以先探测返回值是不是 Promise，再二选一。
+ */
+function decode(audioCtx, arrayBuffer) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = (buf) => { if (!settled) { settled = true; resolve(buf || null); } };
+
+    try {
+      const maybePromise = audioCtx.decodeAudioData(
+        arrayBuffer,
+        (buf) => done(buf),                    // 回调形式（旧版 Safari）
+        () => done(null)
+      );
+      if (maybePromise && typeof maybePromise.then === 'function') {
+        maybePromise.then(done, () => done(null));
+      }
+    } catch (_) {
+      done(null);
+    }
+  });
 }
 
 /* ------------------------- 查询 ------------------------- */

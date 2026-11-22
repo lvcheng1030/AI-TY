@@ -131,6 +131,17 @@ function ensureReady() {
   return true;
 }
 
+/**
+ * 取出内部的 AudioContext 供其它模块复用。
+ *
+ * 为什么必须复用而不是各建各的：浏览器对同时存在的 AudioContext
+ * 数量有限制（通常 6 个），且多个 context 的声音无法统一混合。
+ * T5 的台词播放需要它（见 src/speech/voice.js 的 attachContext）。
+ */
+export function getContext() {
+  return ctx;
+}
+
 /* ------------------------- 前向半平面保护 ------------------------- */
 
 /**
@@ -609,7 +620,7 @@ if (typeof window !== 'undefined') {
 }
 
 export default {
-  init, isReady, stop,
+  init, isReady, stop, getContext,
   createSource, updateSource, stopSource,
   setListener, playAmbience, stopAmbience,
   setSurface, setSpeed, updateFootsteps,

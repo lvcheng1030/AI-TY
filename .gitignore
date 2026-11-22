@@ -21,3 +21,10 @@ __pycache__/
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+# 本地临时文件
+# tools/test_serve.py 会把浏览器测试结果写到这里，不应入库
+.tmp/
+
+# 语音清单由 tools/tts_build.py 生成，记录了文本哈希，需要入库（用于增量构建）；
+# 但 .mp3 本身必须入库 —— 现场要离线可用。
