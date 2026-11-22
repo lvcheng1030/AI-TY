@@ -1,0 +1,31 @@
+{
+  "id": "dorm_to_teach",
+  "title": "宿舍 → 教学楼",
+  "duration": [90, 110],
+  "start": { "x": 0, "z": 0, "heading": 0 },
+  "tiles": [
+    { "type": "tactile", "points": [[0, 0], [0, -46], [-30, -46]], "width": 1.2 },
+    { "type": "concrete", "rect": [-9, -47, 18, 47] },
+    { "type": "concrete", "rect": [-32, -49, 32, 6] },
+    { "type": "grass", "rect": [-15, -45, 6, 25] }
+  ],
+  "obstacles": [
+    { "id": "bikes", "rect": [-1.6, -35, 3.2, 2.2], "sfx": "blocked" }
+  ],
+  "emitters": [
+    { "id": "traffic_a", "pos": [7, -14], "audio": "traffic_low", "loop": true, "gain": 0.55 },
+    { "id": "traffic_b", "pos": [7, -36], "audio": "traffic_low", "loop": true, "gain": 0.5 },
+    { "id": "crowd_fork", "pos": [-12, -46], "audio": "crowd", "loop": true, "gain": 0.45 },
+    { "id": "wind_grass", "pos": [-11, -30], "audio": "wind", "loop": true, "gain": 0.3 }
+  ],
+  "signs": [
+    { "id": "sign_guide", "pos": [2.0, -12], "facing": 270, "line": "L_SIGN_02" },
+    { "id": "sign_bikes", "pos": [2.2, -31], "facing": 270, "line": "L_SIGN_03" },
+    { "id": "sign_corner", "pos": [-1.5, -44], "facing": 180, "line": "L_SIGN_01" }
+  ],
+  "tasks": [
+    { "id": "bypass_bikes", "type": "avoid", "obstacleId": "bikes", "line": "L_TASK_AVOID" },
+    { "id": "read_bikes_sign", "type": "read", "signId": "sign_bikes", "line": "L_TASK_SIGN" },
+    { "id": "reach_teach", "type": "reach", "target": [-30, -46], "radius": 3, "line": "L_TASK_01" }
+  ]
+}

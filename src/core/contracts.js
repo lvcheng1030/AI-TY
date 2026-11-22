@@ -344,7 +344,13 @@ export function distanceToBand(distance) {
  * @property {[number,number]} [target]   reach 用
  * @property {number} [radius]            reach 用
  * @property {string} [signId]            read 用
+ * @property {string} [obstacleId]        avoid 用：要绕过的障碍物 id
  * @property {string} [line]              完成时播报的台词 id
+ *
+ * 关于 obstacleId（T0 补记）：
+ *   原 typedef 漏了这个字段，而 content/schema.md 早已把它列为 avoid 的必填项。
+ *   由 T3 在实现场景数据时发现并报告（见 content/credits.md 第四节）。
+ *   这是【补充】而非修改 —— 不违反契约冻结：原有字段名与含义都没动。
  */
 
 export default {
