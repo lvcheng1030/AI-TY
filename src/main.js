@@ -105,6 +105,13 @@ function armAudioUnlock() {
     const r = audio.init();
     if (r && r.ok) {
       console.info('[main] 音频已解锁', { sampleRate: r.sampleRate, state: r.state });
+
+      // 把 AudioContext 交给台词模块复用。
+      // 不能让它自己再建一个：浏览器限制同时存在的 context 数量，
+      // 且多个 context 的声音无法统一混合。
+      voice.attachContext(audio.getContext());
+      preloadVoice();
+
       if (pendingAmbience.length > 0) {
         const amb = audio.playAmbience(pendingAmbience);
         console.info(`[main] 已建立环境声源 ${amb.created} 个` +
@@ -127,6 +134,38 @@ function armAudioUnlock() {
 }
 
 const EVENTS_TO_UNLOCK = ['pointerdown', 'keydown', 'touchstart'];
+
+/**
+ * 预加载本次要用到的台词。
+ *
+ * id 来源有两处，都必须覆盖：
+ *   1. 场景数据里引用的（signs[].line、tasks[].line）
+ *   2. 系统提示（偏离、碰撞、敲杖反馈、降级提示）
+ *
+ * 只加载用得到的，而不是把 assets/voice 全部拉下来 ——
+ * 场景变多后全量加载会拖慢启动。
+ */
+async function preloadVoice() {
+  const ids = new Set([
+    // 系统提示（代码里直接引用的固定 id）
+    'S_DEVIATION', 'S_BLOCKED', 'S_CANE_CLEAR',
+    'S_CANE_HIT_NEAR', 'S_CANE_HIT_MID', 'S_CANE_HIT_FAR',
+    'S_ASK_AGAIN', 'S_NO_UNDERSTAND', 'S_TOO_NOISY',
+    'S_NO_SIGN', 'S_WHERE_AM_I', 'S_STOP', 'S_FASTER', 'S_SLOWER',
+    'S_END'
+  ]);
+
+  const s = scene.getCurrent();
+  if (s) {
+    for (const sign of s.signs) if (sign.line) ids.add(sign.line);
+    for (const task of s.tasks) if (task.line) ids.add(task.line);
+  }
+
+  const r = await voice.preload(Array.from(ids));
+  console.info(`[main] 台词已加载 ${r.loaded.length} 条` +
+               (r.missing.length ? `，缺失 ${r.missing.length} 条：${r.missing.join(', ')}` : ''));
+  ctx.voiceReady = r.missing.length === 0;
+}
 
 /**
  * 载入 content/scene1.json。
