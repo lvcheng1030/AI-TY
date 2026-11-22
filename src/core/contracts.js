@@ -195,7 +195,43 @@ export const SURFACES = Object.freeze({
  * @property {string|null} obstacleId 命中的障碍物 id
  * @property {string} [bearing]  粗略方位：'left' | 'ahead' | 'right'
  *                               （只给左右与正前，不含正后——见 docs/test-log.md T-001）
+ * @property {string} [band]     粗略距离档位，取值见 CANE_BANDS。
+ *                               声音层面用连续延迟，但【对外播报】只用档位：
+ *                               T-002 只验证了 2 米 vs 8 米，未验证 1 米级细分辨，
+ *                               因此不得宣称"能听出精确距离"。
  */
+
+/**
+ * 敲杖距离档位。
+ *
+ * 为什么分档而不是报精确米数：见 docs/test-log.md 的 T-002「限制一」。
+ * 测试证明的是"能分辨远近"，不是"能分辨 3 米与 4 米"。
+ * 说档位是诚实的，说"3.7 米"是过度承诺。
+ */
+export const CANE_BANDS = Object.freeze({
+  NEAR: 'near',   // < 3 米
+  MID: 'mid',     // 3 ~ 5 米
+  FAR: 'far'      // > 5 米
+});
+
+/** 档位的中文说法，供 AI 助手播报用 */
+export const CANE_BAND_LABELS = Object.freeze({
+  near: '很近',
+  mid: '有一段距离',
+  far: '比较远'
+});
+
+/**
+ * 把距离（米）换算成档位。
+ * @param {number} distance
+ * @returns {string|null}
+ */
+export function distanceToBand(distance) {
+  if (!Number.isFinite(distance)) return null;
+  if (distance < 3) return CANE_BANDS.NEAR;
+  if (distance <= 5) return CANE_BANDS.MID;
+  return CANE_BANDS.FAR;
+}
 
 /**
  * @typedef {Object} SignNearby
