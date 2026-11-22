@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>T4 意图解析自测</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0; padding: 20px; background: #0b0c0e; color: #e8e8ea;
+    font: 14px/1.5 ui-monospace, Consolas, "Microsoft YaHei", monospace;
+  }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  h2 { font-size: 15px; margin: 26px 0 8px; color: #cfd2d8; }
+  .hint { color: #8a8c92; font-size: 12.5px; margin-bottom: 14px; }
+  .summary { font-size: 18px; font-weight: 700; padding: 10px 14px; border-radius: 8px; margin: 10px 0 14px; }
+  .summary.ok { background: #10331f; color: #3ddc84; }
+  .summary.bad { background: #3a1517; color: #ff5c5c; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid #25272c; vertical-align: top; }
+  th { color: #8a8c92; font-weight: 500; position: sticky; top: 0; background: #0b0c0e; }
+  tr.f { background: #2a1113; }
+  tr.p td:first-child { color: #3ddc84; }
+  tr.f td:first-child { color: #ff5c5c; }
+  .d { color: #8a8c92; font-size: 12.5px; }
+  .tag { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 11.5px; }
+  .tag.exe { background: #10331f; color: #3ddc84; }
+  .tag.cfm { background: #3a2f10; color: #ffcc66; }
+  .tag.rej { background: #3a1517; color: #ff5c5c; }
+  ul.checks { padding-left: 18px; }
+  ul.checks li { margin: 4px 0; }
+</style>
+</head>
+<body>
+  <h1>T4 · 意图解析自测</h1>
+  <div class="hint">
+    打开方式：在项目根目录起本地服务器（<code>python -m http.server 8000</code>），
+    访问 <code>http://localhost:8000/tests/intents.test.html</code>。
+    用例数据来自 <code>content/intents.cases.json</code>，改用例不需要改本文件。
+  </div>
+
+  <div id="summary" class="summary">运行中…</div>
+  <div id="checks"></div>
+  <div id="table"></div>
+
+  <script type="module" src="./intents.test.js"></script>
+</body>
+</html>
