@@ -32,7 +32,15 @@ export const EVENTS = Object.freeze({
   /** 路面材质变化（只在变化时触发，不是每帧） @type {SurfaceChanged} */
   SURFACE_CHANGED: 'surface:changed',
 
-  /** 敲杖探测结果 @type {CaneProbe} */
+  /**
+   * 敲杖【请求】。由 T2 的玩家模块发出（空格键或语音"看看前面"），
+   * T1 的音频引擎响应它、做探测并发出 CANE_PROBE。
+   * 拆成请求与结果两个事件，是为了让移动逻辑不必知道音频实现。
+   * @type {CaneRequest}
+   */
+  CANE_REQUEST: 'cane:request',
+
+  /** 敲杖探测【结果】 @type {CaneProbe} */
   CANE_PROBE: 'cane:probe',
 
   /** 附近出现可读告示牌（进入范围时触发一次） @type {SignNearby} */
@@ -172,11 +180,21 @@ export const SURFACES = Object.freeze({
  */
 
 /**
+ * @typedef {Object} CaneRequest
+ * @property {number} x        敲杖时的玩家位置
+ * @property {number} z
+ * @property {number} heading  朝向，T1 用它决定前向锥形的方向
+ * @property {string} [source] 'keyboard' | 'voice'
+ */
+
+/**
  * @typedef {Object} CaneProbe
  * @property {boolean} hit       前方锥形内是否探测到东西
  * @property {number} distance   距离（米）。未命中时为 Infinity
  * @property {string|null} surface 命中处的地面材质
  * @property {string|null} obstacleId 命中的障碍物 id
+ * @property {string} [bearing]  粗略方位：'left' | 'ahead' | 'right'
+ *                               （只给左右与正前，不含正后——见 docs/test-log.md T-001）
  */
 
 /**

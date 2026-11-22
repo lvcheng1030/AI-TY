@@ -60,8 +60,52 @@ function boot() {
     emit(EVENTS.DEGRADE_ON, { reason: asrState?.reason || 'unsupported' });
   }
 
-  // 5) 循环：把「移动」和「音频听者位置」绑在同一个 tick 上。
-  //    这是刻意设计 —— 两者不同步会导致声音位置与玩家位置错位。
+  // 5) 载入场景，然后初始化玩家。
+  //    顺序不能反：player.init() 要读场景起点与障碍物。
+  //    场景文件由 T3 提供；还没有时保持 null，游戏仍能启动（只是没有关卡）。
+  loadScene().then((loaded) => {
+    if (loaded) {
+      player.init();
+      console.info('[main] 场景就绪，可操作', {
+        起点: scene.getCurrent()?.start,
+        障碍物数: scene.getCurrent()?.obstacles.length,
+        告示牌数: scene.getCurrent()?.signs.length,
+        任务数: scene.getCurrent()?.tasks.length
+      });
+    } else {
+      console.info('[main] 尚无场景数据（content/scene1.json），' +
+                   '移动与音频模块不会启动。这是 T3 尚未交付时的正常状态。');
+    }
+
+    startLoop();
+  });
+}
+
+/**
+ * 载入 content/scene1.json。
+ *
+ * 用 fetch 而不是 import：场景是【数据】不是代码，
+ * 这样 T3 改 JSON 不需要碰任何 .js 文件（符合文件归属约定）。
+ */
+async function loadScene() {
+  try {
+    const res = await fetch('./content/scene1.json', { cache: 'no-cache' });
+    if (!res.ok) return false;
+    const json = await res.json();
+    const parsed = scene.load(json);
+    if (!parsed) return false;
+    ctx.scene = parsed;
+    emit(EVENTS.SCENE_LOADED, { sceneId: parsed.id, title: parsed.title });
+    return true;
+  } catch (err) {
+    console.warn('[main] 载入场景失败：', err.message);
+    return false;
+  }
+}
+
+function startLoop() {
+  // 循环：把「移动」和「音频听者位置」绑在同一个 tick 上。
+  // 这是刻意设计 —— 两者不同步会导致声音位置与玩家位置错位。
   ctx.loop = createLoop({
     fps: 60,
     onTick: (dt) => {
@@ -83,7 +127,6 @@ function boot() {
   // 启动确认：循环是否真的在推进。
   // 只看 loop.running 不够 —— 它只表示"已请求启动"，
   // 而 rAF 在后台标签页、无头模式、或用户切走窗口时都不触发。
-  // 一秒后回看实际步进数，才能确认循环真的活着。
   setTimeout(() => {
     const stepped = ctx.loop.ticks;
     const expected = 60;

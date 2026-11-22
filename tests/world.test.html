@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>world 自测</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0; padding: 20px; background: #0b0c0e; color: #e8e8ea;
+    font: 14px/1.5 ui-monospace, Consolas, "Microsoft YaHei", monospace;
+  }
+  .summary { font-size: 18px; font-weight: 700; padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; }
+  .summary.ok { background: #10331f; color: #3ddc84; }
+  .summary.bad { background: #3a1517; color: #ff5c5c; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid #25272c; vertical-align: top; }
+  th { color: #8a8c92; font-weight: 500; }
+  tr.f { background: #2a1113; }
+  tr.p td:first-child { color: #3ddc84; }
+  tr.f td:first-child { color: #ff5c5c; }
+  .d { color: #8a8c92; font-size: 12.5px; }
+</style>
+</head>
+<body>
+  <div id="out">运行中…</div>
+  <script type="module" src="./world.test.js"></script>
+</body>
+</html>
