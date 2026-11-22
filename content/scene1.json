@@ -19,13 +19,13 @@
     { "id": "wind_grass", "pos": [-11, -30], "audio": "wind", "loop": true, "gain": 0.3 }
   ],
   "signs": [
-    { "id": "sign_access", "pos": [2.0, -12], "facing": 270, "line": "L_SIGN_ACCESS" },
-    { "id": "sign_bikes", "pos": [2.2, -31], "facing": 270, "line": "L_SIGN_BIKES" },
-    { "id": "sign_fork", "pos": [-1.5, -44], "facing": 180, "line": "L_SIGN_FORK" }
+    { "id": "sign_guide", "pos": [2.0, -12], "facing": 270, "line": "L_SIGN_02" },
+    { "id": "sign_bikes", "pos": [2.2, -31], "facing": 270, "line": "L_SIGN_03" },
+    { "id": "sign_corner", "pos": [-1.5, -44], "facing": 180, "line": "L_SIGN_01" }
   ],
   "tasks": [
     { "id": "bypass_bikes", "type": "avoid", "obstacleId": "bikes", "line": "L_TASK_AVOID" },
-    { "id": "read_fork_sign", "type": "read", "signId": "sign_fork", "line": "L_TASK_READ" },
-    { "id": "reach_teach", "type": "reach", "target": [-30, -46], "radius": 3, "line": "L_TASK_REACH" }
+    { "id": "read_bikes_sign", "type": "read", "signId": "sign_bikes", "line": "L_TASK_SIGN" },
+    { "id": "reach_teach", "type": "reach", "target": [-30, -46], "radius": 3, "line": "L_TASK_01" }
   ]
 }
