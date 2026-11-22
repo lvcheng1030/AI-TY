@@ -55,6 +55,12 @@ export const EVENTS = Object.freeze({
   /** 请求播放某句台词 @type {Speak} */
   SPEAK: 'speak',
 
+  /** 台词开始播放 @type {{lineId:string, priority:number}} */
+  SPEAK_STARTED: 'speak:started',
+
+  /** 台词播放结束 @type {{lineId:string}} */
+  SPEAK_ENDED: 'speak:ended',
+
   /** 语音识别进入降级模式 @type {Degrade} */
   DEGRADE_ON: 'degrade:on',
 
