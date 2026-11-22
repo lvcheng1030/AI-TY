@@ -1,0 +1,137 @@
+{
+  "L_ARRIVE": {
+    "hash": "2afbd7b30b9c3123",
+    "text": "到了。前面就是教学楼的门。",
+    "voice": "xiaoxiao"
+  },
+  "L_INTRO_01": {
+    "hash": "27d0aa4c0fed1370",
+    "text": "你正站在宿舍门口。前方是人行道，脚下是盲道。",
+    "voice": "xiaoxiao"
+  },
+  "L_INTRO_02": {
+    "hash": "e768870422efcf74",
+    "text": "耳机戴好。记住，你只能用耳朵和嘴。",
+    "voice": "xiaoxiao"
+  },
+  "L_INTRO_03": {
+    "hash": "93e474c08e8a9d24",
+    "text": "按住 W 或向前说一句，就可以走了。",
+    "voice": "xiaoxiao"
+  },
+  "L_SIGN_01": {
+    "hash": "252f4c6471636c27",
+    "text": "此处为盲道，请勿占用。",
+    "voice": "xiaoxiao"
+  },
+  "L_SIGN_02": {
+    "hash": "287800d92925f9be",
+    "text": "无障碍通道，前方五十米。",
+    "voice": "xiaoxiao"
+  },
+  "L_SIGN_03": {
+    "hash": "5e630f0493dbedcc",
+    "text": "共享单车请停放在线内。",
+    "voice": "xiaoxiao"
+  },
+  "L_TASK_01": {
+    "hash": "db27a1679c09a67a",
+    "text": "你摸到了教学楼的门。这一段路，你走完了。",
+    "voice": "xiaoxiao"
+  },
+  "L_TASK_AVOID": {
+    "hash": "38f2b6fc11777923",
+    "text": "你绕过了自行车，又踩回了盲道。做得好。",
+    "voice": "xiaoxiao"
+  },
+  "L_TASK_SIGN": {
+    "hash": "12fee2be06b98411",
+    "text": "你把牌子读完了。",
+    "voice": "xiaoxiao"
+  },
+  "L_TRAFFIC_HINT": {
+    "hash": "15338e36a837ce87",
+    "text": "车流在右边，说明你还在人行道上。",
+    "voice": "xiaoxiao"
+  },
+  "S_ASK_AGAIN": {
+    "hash": "b2093df3c805b344",
+    "text": "你是说，往前走吧？",
+    "voice": "xiaoxiao"
+  },
+  "S_BLOCKED": {
+    "hash": "82319cc11fdd5fac",
+    "text": "前面有东西挡着，过不去。",
+    "voice": "xiaoxiao"
+  },
+  "S_CANE_CLEAR": {
+    "hash": "11d5b1e7ea035dae",
+    "text": "前面是空的。",
+    "voice": "xiaoxiao"
+  },
+  "S_CANE_HIT_FAR": {
+    "hash": "5d992108e904c86c",
+    "text": "很远的地方好像有东西，但不挡路。",
+    "voice": "xiaoxiao"
+  },
+  "S_CANE_HIT_MID": {
+    "hash": "70826b4f0a3081f2",
+    "text": "前面有一段距离的地方有东西。",
+    "voice": "xiaoxiao"
+  },
+  "S_CANE_HIT_NEAR": {
+    "hash": "2727e26e45a0759d",
+    "text": "就在你前面，很近。",
+    "voice": "xiaoxiao"
+  },
+  "S_DEVIATION": {
+    "hash": "0ffbe7b2eba70238",
+    "text": "你好像走出盲道了。脚尖再往左一点。",
+    "voice": "xiaoxiao"
+  },
+  "S_END": {
+    "hash": "55344359f782fa72",
+    "text": "这一局结束了。谢谢你把这段路走完。",
+    "voice": "xiaoxiao"
+  },
+  "S_FASTER": {
+    "hash": "5f601329166e7d31",
+    "text": "好，我走快一点。",
+    "voice": "xiaoxiao"
+  },
+  "S_NO_SIGN": {
+    "hash": "d05056fb1636b7a2",
+    "text": "我这边没有可以读的牌子。你正前方有一块，要读吗？",
+    "voice": "xiaoxiao"
+  },
+  "S_NO_UNDERSTAND": {
+    "hash": "19a9bad907836266",
+    "text": "我没听清。你可以说往前走、向左走、向右走，或者让我读一下前面的牌子。",
+    "voice": "xiaoxiao"
+  },
+  "S_SLOWER": {
+    "hash": "d3e908c786ba18c5",
+    "text": "好，我走慢一点。",
+    "voice": "xiaoxiao"
+  },
+  "S_STOP": {
+    "hash": "aa8129fb250d097f",
+    "text": "好，停下了。",
+    "voice": "xiaoxiao"
+  },
+  "S_TIMEOUT": {
+    "hash": "46ee25f127cf1cae",
+    "text": "时间差不多了。要不要休息一下？",
+    "voice": "xiaoxiao"
+  },
+  "S_TOO_NOISY": {
+    "hash": "ede3ec640980349b",
+    "text": "这里有点吵。可以按一二三，或者直接打字。",
+    "voice": "xiaoxiao"
+  },
+  "S_WHERE_AM_I": {
+    "hash": "30c117b5602a269e",
+    "text": "你在人行道上，盲道在你脚下，车流在右边。",
+    "voice": "xiaoxiao"
+  }
+}
