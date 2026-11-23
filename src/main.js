@@ -24,6 +24,7 @@ import * as scene from './world/scene.js';
 // —— T4 语音识别与意图 ——
 import * as asr from './speech/asr.js';
 import * as nlu from './nlu/intents.js';
+import * as input from './ui/input.js';
 // —— T5 台词播放 ——
 import * as voice from './speech/voice.js';
 // —— T6 界面与无障碍 ——
@@ -59,6 +60,11 @@ function boot() {
   if (!asrState || asrState.ok !== true) {
     emit(EVENTS.DEGRADE_ON, { reason: asrState?.reason || 'unsupported' });
   }
+
+  // 4.5) 输入通道接线：把语音/按钮/打字三种入口统一到 input.submit()。
+  //      这是 T4 交付后必须补的一环 —— asr.handleText() 原本无人调用，
+  //      三态里的「回述确认」与「拒答」也没有代码消费。
+  input.init();
 
   // 5) 音频解锁：浏览器禁止无用户手势出声，所以挂一次性监听。
   //    必须在载入场景【之前】把探测函数注入好，否则第一次敲杖会落空。
@@ -154,7 +160,6 @@ async function preloadVoice() {
     'S_NO_SIGN', 'S_WHERE_AM_I', 'S_STOP', 'S_FASTER', 'S_SLOWER',
     'S_END'
   ]);
-
   const s = scene.getCurrent();
   if (s) {
     for (const sign of s.signs) if (sign.line) ids.add(sign.line);
@@ -249,6 +254,12 @@ function startLoop() {
 if (typeof window !== 'undefined') {
   window.__ctx = ctx;
   window.__bus = bus;
+
+  // 输入通道的调试入口：现场排查语音问题时要能直接喂一句话
+  // 例如：__input.submit('向左走')  —— 不必真的对着麦克风说
+  window.__input = input;
+  window.__asr = asr;
+  window.__nlu = nlu;
 
   // 调试用：把几个关键事件镜像到控制台（正式版可以关掉）
   const TRACE = [
