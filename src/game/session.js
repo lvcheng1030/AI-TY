@@ -27,8 +27,17 @@ const DEFAULT_LIMIT_SEC = 110;
  *
  * 不留这段延迟，结算页会抢在「你到了」那句台词之前出现 ——
  * 玩家刚走到门口就被切走，观感上像是被掐断。
+ *
+ * 但固定 1.2 秒又不够：到达台词本身约 3~4 秒（本机试运行实测被切掉）。
+ * 所以改成「等这句放完再结算，最多等 4 秒」。
  */
-const AUTO_END_DELAY_MS = 1200;
+const AUTO_END_MAX_MS = 5000;
+
+/** 终点台词播完后，再留一点余量进结算页 */
+const AUTO_END_AFTER_LINE_MS = 400;
+
+/** 正在等的终点台词 id（到达时由任务里的 line 给出） */
+let pendingEndLine = null;
 
 /** 超时只温和提醒一次，不强制中断（任务卡明确要求） */
 const TIMEOUT_LINE = 'S_TIMEOUT';
@@ -85,6 +94,7 @@ function resetCounters() {
   doneTaskIds.clear();
   timeoutHinted = false;
   autoEndAt = null;
+  pendingEndLine = null;
 }
 
 function round1(sec) {
@@ -114,7 +124,10 @@ function maybeScheduleEnd(taskId) {
   if (reaches.length === 0) return;
   if (!reaches.every(t => doneTaskIds.has(t.id))) return;
 
-  autoEndAt = now() + AUTO_END_DELAY_MS;
+  // 记住到达台词：等它播完再结算，播不完就等满上限
+  const lastReach = reaches[reaches.length - 1];
+  pendingEndLine = lastReach.line || null;
+  autoEndAt = now() + AUTO_END_MAX_MS;
 }
 
 /** 每帧检查超时与延迟结算。挂在 player:moved 上而不是自建定时器 */
@@ -169,6 +182,20 @@ function bind() {
   }));
 
   offBus.push(bus.on(EVENTS.PLAYER_MOVED, onTick));
+
+  // 到达台词一播完就提前结算，不必干等上限。
+  // 只认 pendingEndLine，避免玩家中途的提示语把结算提前触发。
+  offBus.push(bus.on(EVENTS.SPEAK_STARTED, (p) => {
+    if (!running || !pendingEndLine || !p || p.lineId !== pendingEndLine) return;
+    // 台词开始播了，重新起算上限：排队等待的时间不该算在它头上
+    autoEndAt = now() + AUTO_END_MAX_MS;
+  }));
+
+  offBus.push(bus.on(EVENTS.SPEAK_ENDED, (p) => {
+    if (!running || !pendingEndLine || !p || p.lineId !== pendingEndLine) return;
+    pendingEndLine = null;
+    autoEndAt = now() + AUTO_END_AFTER_LINE_MS;
+  }));
 }
 
 /* ------------------------- 对外接口 ------------------------- */
