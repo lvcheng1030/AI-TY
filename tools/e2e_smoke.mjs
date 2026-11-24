@@ -1,13 +1,13 @@
-﻿/**
+/**
  * 本机试运行：用 CDP 驱动无头 Edge 走一遍完整流程，并截图。
- * 运行：node run-cdp.mjs
+ * 运行：先起 8000 端口的静态服务器，再 node tools/e2e_smoke.mjs
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 
 const BASE = 'http://127.0.0.1:9333';
 const URL_GAME = 'http://127.0.0.1:8000/';
-const OUT = new URL('./artifacts/', import.meta.url).pathname.replace(/^\//, '');
-mkdirSync(OUT || 'artifacts', { recursive: true });
+const OUT = new URL('../materials/screenshots/', import.meta.url);
+mkdirSync(OUT, { recursive: true });
 
 const list = await (await fetch(`${BASE}/json/list`)).json();
 const page = list.find(t => t.type === 'page');
@@ -54,7 +54,7 @@ async function evalJs(expression, awaitPromise = false) {
 
 async function shot(name) {
   const r = await send('Page.captureScreenshot', { format: 'png' });
-  const file = `${OUT}${name}.png`;
+  const file = new URL(`./${name}.png`, OUT);
   writeFileSync(file, Buffer.from(r.data, 'base64'));
   console.log('SHOT', name);
 }
@@ -140,9 +140,14 @@ await evalJs("import('/src/world/player.js').then(m => m.teleport(0, -36, 0))", 
 await wait(800);
 state.afterAvoid = await evalJs("import('/src/game/tasks.js').then(m => m.getProgress())", true);
 
-/* 到终点：1.2 秒后应自动结算 */
+/* 到终点：等到达台词播完、结算页出现（最多 20 秒） */
 await evalJs("import('/src/world/player.js').then(m => m.teleport(-30, -46, 0))", true);
-await wait(9500);
+for (let i = 0; i < 40; i++) {
+  await wait(500);
+  const done = await evalJs("document.body.innerText.includes('这一局结束了')", false);
+  if (done) break;
+}
+await wait(600);
 state.afterReach = await evalJs("import('/src/game/tasks.js').then(m => m.getProgress())", true);
 state.endEvent = await evalJs('window.__ev.filter(e => e[0] === "session:end").map(e => e[1])');
 state.screenAfterEnd = await evalJs("document.querySelector('.t6-screen:not([hidden])')?.id || null");
@@ -164,4 +169,4 @@ ws.close();
 //   1) cd 仓库根目录 && python -m http.server 8000
 //   2) 用 --remote-debugging-port=9333 启动 Edge/Chrome（headless 即可）
 //   3) node tools/e2e_smoke.mjs
-// 产出：artifacts/run-0*.png 与一段 JSON 状态（任务进度、结算、控制台错误）
+// 产出：materials/screenshots/run-0*.png 与一段 JSON 状态（任务进度、结算、控制台错误）
