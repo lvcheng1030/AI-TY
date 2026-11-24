@@ -8,6 +8,64 @@
 
 ---
 
+## T-008 · 本机试运行：全流程打通，抓到两处接线缺陷
+
+| 项 | 值 |
+| --- | --- |
+| 日期 | 2026-11-24 16:20–16:35 |
+| 方式 | Edge 158（headless）+ CDP 驱动 + 本机 `python -m http.server 8000` |
+| 测试人 | xiaoao |
+| 对象 | `index.html` 全链路（T1–T7 接线后的真实运行） |
+| 工具 | `tools/e2e_smoke.mjs`（可重跑）；截图在 `materials/screenshots/` |
+
+### 一、流程结果（全部通过）
+
+| 步骤 | 实测 |
+| --- | --- |
+| 开始页 | 渲染正常，19 个按钮可点；标题「盲盒校园：暗夜探险」 |
+| 耳机检查 | 左耳 / 右耳 / 都听到了 均可点 |
+| 校准 | 三步走完，进入游戏屏 |
+| 键盘 | 按住 W 1.2 秒，`z = -1.44`（= 1.2 m/s × 1.2 s） |
+| 敲杖 | 空格触发 `cane:probe`，返回 `hit:false`（起点前方空） |
+| 读牌 | 站到 `sign_bikes` 旁发 `read_sign` → `task:done` + 台词 `L_TASK_SIGN` 开始播 |
+| 绕行 | near → off → 回到盲道 → `task:done:bypass_bikes` |
+| 终点 | 到达 `[-30,-46]` → 自动结算，结算页 3/3、用时、敲杖 1、被提示 2 |
+| 控制台 | 修复后零 error（此前每次都有 favicon 404，已顺手消除） |
+
+### 二、抓到的两处真实缺陷（都已修）
+
+**缺陷 1：所有任务台词静默失败。**
+
+现象：`[bus] 监听 speak 时出错：InvalidAccessError: cannot connect to an AudioNode belonging to a different audio context`。
+根因：`voice.js` 的 `init()` 在没有 context 时自建了一个 AudioContext；之后 `attachContext()` 注入 T1 的 context 时
+只改 `ctx` 变量、不重建 `master`。播放时 `src`（新 context）连 `master`（旧 context）→ 异常。
+修复：`init()` 不再自建 context；`attachContext()` 换 context 时重建 `master` 并断开旧的。
+复测：`speak:started` 依次出现 `L_TASK_SIGN` / `L_TASK_AVOID` / `L_TASK_01`，无异常。
+
+**缺陷 2：到达台词被结算页掐断。**
+
+现象：到终点后 1.2 秒就切结算页，`L_TASK_01`（约 3–4 秒）根本播不完。
+修复：`session.js` 改为**等到达台词播完再结算**——台词开始播时重置 5 秒上限，
+`speak:ended` 后 0.4 秒进结算；台词缺失时最多等 5 秒。
+复测：`L_TASK_01` 正常播完，随后进结算页（用时 0:16，含合成操作等待）。
+
+### 三、断网专项（合成）
+
+用 CDP `Network.emulateNetworkConditions{offline:true}`（连 localhost 一起断）在游戏中途断网：
+游戏继续走完、任务 3/3、正常结算，未崩溃；已预加载的台词可播，未加载的走 TTS 回退并打 warn。
+出现 20 条 `ERR_INTERNET_DISCONNECTED`，是断网后仍在请求 mp3 的预期结果，不是崩溃。
+**真实现场是「无外网、localhost 可用」**：服务端日志显示全部请求都指向 `127.0.0.1`，没有任何外部域名。
+
+### 四、未覆盖（留给后续）
+
+- Android Chrome / iOS Safari：没有设备，未测。
+- 噪音环境（食堂/户外）识别成功率：需要人到现场。
+- 真人戴耳机试听：本机没有可听的音频输出，只能验证事件与状态，**不能验证「好不好听、方位准不准」**。
+- T-001 的 A 相位（左右/前后分辨）仍是「待补」，这是 go/no-go 的关键数据。
+
+---
+
+
 ## T-007 · T7 任务判定与单局结算（自动化验证）
 
 | 项 | 值 |
