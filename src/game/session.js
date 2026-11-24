@@ -136,6 +136,13 @@ function onTick() {
 }
 
 function bind() {
+  // T6 的开始页会自己 emit SESSION_START（它不知道 session.start() 的存在）。
+  // 那个信号本身就表示「这一局开始了」：这里接住它开始计时，但不重复 emit。
+  // 将来 T6 改成直接调 session.start() 也成立 —— 那时 running 已为 true，不会二次触发。
+  offBus.push(bus.on(EVENTS.SESSION_START, () => {
+    if (!running) begin();
+  }));
+
   offBus.push(bus.on(EVENTS.TASK_DONE, (p) => {
     if (!running || !p || !p.taskId) return;
     // 同一个任务重复上报不重复计数：计数错了，结算页就在撒谎
@@ -174,6 +181,14 @@ export function init() {
   return getStats();
 }
 
+/** 真正开始计时。不发事件 —— 事件由调用方（人）或 start() 负责发 */
+function begin() {
+  resetCounters();
+  lastStats = null;
+  startedAt = now();
+  running = true;
+}
+
 /**
  * 开始一局。
  *
@@ -183,10 +198,7 @@ export function init() {
 export function start() {
   if (running) reset();
 
-  resetCounters();
-  lastStats = null;
-  startedAt = now();
-  running = true;
+  begin();
 
   const cur = scene.getCurrent();
   emit(EVENTS.SESSION_START, { sceneId: cur ? cur.id : null });
