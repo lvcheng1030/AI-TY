@@ -62,15 +62,13 @@ export function init(audioContext = null) {
 
   if (audioContext) {
     attachContext(audioContext);
-  } else if (typeof window !== 'undefined') {
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (AC) {
-      ctx = new AC();
-      master = ctx.createGain();
-      master.gain.value = 0.9;
-      master.connect(ctx.destination);
-    }
   }
+  // 刻意【不】在这里自建 AudioContext。
+  //
+  // 曾经的实现会在 init 时 new 一个 context，等 T1 解锁后再由主线��注入它的 context：
+  // attachContext 只改 ctx 变量、不重建 master，于是 master 留在旧 context 上，
+  // 播放时 src（新 context）连 master（旧 context）→ InvalidAccessError。
+  // 本机试运行（Edge 158，2026-11-24）里这条错误让【所有任务台词都播不出来】。
 
   bus.on(EVENTS.SPEAK, (p) => {
     if (p && p.lineId) speak(p.lineId, { priority: p.priority });
@@ -79,7 +77,7 @@ export function init(audioContext = null) {
   inited = true;
 
   if (!ctx) {
-    console.warn('[T5] 没有 AudioContext，台词将回退到浏览器 TTS');
+    console.warn('[T5] 尚未注入 AudioContext，台词暂时回退到浏览器 TTS');
     return { ok: false, reason: 'no-context' };
   }
   return { ok: true };
@@ -88,12 +86,17 @@ export function init(audioContext = null) {
 /** 注入 AudioContext。T1 解锁音频后调用，避免创建第二个 context。 */
 export function attachContext(audioContext) {
   if (!audioContext || ctx === audioContext) return;
-  ctx = audioContext;
-  if (!master) {
-    master = ctx.createGain();
-    master.gain.value = 0.9;
-    master.connect(ctx.destination);
+
+  // 换 context 时必须重建 master：AudioNode 不能跨 context 连接。
+  if (master) {
+    try { master.disconnect(); } catch (_) { /* 已断开 */ }
+    master = null;
   }
+
+  ctx = audioContext;
+  master = ctx.createGain();
+  master.gain.value = 0.9;
+  master.connect(ctx.destination);
 }
 
 /* ------------------------- 加载 ------------------------- */
