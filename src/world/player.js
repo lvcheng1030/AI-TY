@@ -32,8 +32,18 @@ export const CONFIG = Object.freeze({
   DEVIATION_LIMIT: 1.5, // 偏离盲道多少米才提示
   DEVIATION_COOLDOWN: 6,// 两次偏离提示的最小间隔，秒
   BLOCKED_COOLDOWN: 1.2,// 两次碰撞提示的最小间隔，秒
-  PULSE_MOVE: 1.5,      // 语音"往前走"持续多久
+  PULSE_MOVE: 4.0,      // 语音"往前走"走多久（4s × 1.2m/s ≈ 4.8 米）
   PULSE_TURN: 1.0,      // 语音"左转"持续多久（90°/s × 1s = 90°）
+
+  /**
+   * "向左走 / 向右走"在转身之后继续走多久。
+   *
+   * 为什么不只转身：字面意思就是"往左走"，不是"左转"。
+   * 只转身的话，玩家得连说三四句才挪一步，语音通道基本没法用。
+   * 转身的 1 秒里同时前进，轨迹是一段小圆弧（半径约 0.76 米），
+   * 转完继续直行 —— 接近真人被口头指引时的走法。
+   */
+  PULSE_AFTER_TURN: 2.5,
 
   /**
    * 速度上限（米/秒）。超过它的一律当作传送，不算行走。
@@ -293,9 +303,16 @@ function subscribeIntents() {
       case INTENTS.MOVE_FORWARD:
         clearMovement(); pulse('forward', CONFIG.PULSE_MOVE); break;
       case INTENTS.MOVE_LEFT:
-        clearTurn(); pulse('turnLeft', CONFIG.PULSE_TURN); break;
+        // "向左走" = 转 90° + 继续走一段（只转身的话等于要连说四次才挪一步）
+        clearTurn();
+        pulse('turnLeft', CONFIG.PULSE_TURN);
+        pulse('forward', CONFIG.PULSE_TURN + CONFIG.PULSE_AFTER_TURN);
+        break;
       case INTENTS.MOVE_RIGHT:
-        clearTurn(); pulse('turnRight', CONFIG.PULSE_TURN); break;
+        clearTurn();
+        pulse('turnRight', CONFIG.PULSE_TURN);
+        pulse('forward', CONFIG.PULSE_TURN + CONFIG.PULSE_AFTER_TURN);
+        break;
       case INTENTS.TURN_LEFT:
         clearTurn(); pulse('turnLeft', CONFIG.PULSE_TURN); break;
       case INTENTS.TURN_RIGHT:
