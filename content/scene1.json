@@ -10,17 +10,17 @@
     { "type": "grass", "rect": [-7.5, -22.5, 3, 12.5] }
   ],
   "obstacles": [
-    { "id": "bikes", "rect": [-0.8, -17.5, 1.6, 1.1], "sfx": "blocked" }
+    { "id": "bikes", "rect": [-0.8, -7.45, 1.6, 1.1], "sfx": "blocked" }
   ],
   "emitters": [
-    { "id": "traffic_a", "pos": [3.5, -7], "audio": "traffic_low", "loop": true, "gain": 0.55 },
-    { "id": "traffic_b", "pos": [3.5, -18], "audio": "traffic_low", "loop": true, "gain": 0.5 },
+    { "id": "traffic_a", "pos": [3.5, -4], "audio": "traffic_low", "loop": true, "gain": 0.55 },
+    { "id": "traffic_b", "pos": [3.5, -14], "audio": "traffic_low", "loop": true, "gain": 0.5 },
     { "id": "crowd_fork", "pos": [-6, -23], "audio": "crowd", "loop": true, "gain": 0.45 },
     { "id": "wind_grass", "pos": [-5.5, -15], "audio": "wind", "loop": true, "gain": 0.3 }
   ],
   "signs": [
-    { "id": "sign_guide", "pos": [1.0, -6], "facing": 270, "line": "L_SIGN_02" },
-    { "id": "sign_bikes", "pos": [1.1, -15.5], "facing": 270, "line": "L_SIGN_03" },
+    { "id": "sign_guide", "pos": [1.0, -2.5], "facing": 270, "line": "L_SIGN_02" },
+    { "id": "sign_bikes", "pos": [1.1, -5.6], "facing": 270, "line": "L_SIGN_03" },
     { "id": "sign_corner", "pos": [-0.75, -22], "facing": 180, "line": "L_SIGN_01" }
   ],
   "tasks": [
