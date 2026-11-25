@@ -10,7 +10,7 @@ L_TASK_AVOID,你绕过了自行车，又踩回了盲道。做得好。,xiaoxiao,
 L_TASK_SIGN,你把牌子读完了。,xiaoxiao,1
 L_TRAFFIC_HINT,车流在右边，说明你还在人行道上。,xiaoxiao,1
 L_ARRIVE,到了。前面就是教学楼的门。,xiaoxiao,1
-S_DEVIATION,你好像走出盲道了。脚尖再往左一点。,xiaoxiao,-
+S_DEVIATION,你偏离了盲道。,xiaoxiao,-
 S_BLOCKED,前面有东西挡着，过不去。,xiaoxiao,-
 S_CANE_HIT_NEAR,就在你前面，很近。,xiaoxiao,-
 S_CANE_HIT_MID,前面有一段距离的地方有东西。,xiaoxiao,-
