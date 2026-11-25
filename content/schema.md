@@ -27,7 +27,7 @@
 {
   "id": "dorm_to_teach",
   "title": "宿舍 → 教学楼",
-  "duration": [90, 110],
+  "duration": [45, 60],
   "start": { "x": 0, "z": 0, "heading": 90 },
   "tiles": [],
   "obstacles": [],
