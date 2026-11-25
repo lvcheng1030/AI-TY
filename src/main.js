@@ -66,6 +66,21 @@ function boot() {
   //      三态里的「回述确认」与「拒答」也没有代码消费。
   input.init();
 
+  // 4.6) 把 ASSIST 事件接到播报上。
+  //
+  //      这是一条断掉的链路：player.js 在偏离盲道 / 长按超时时发 ASSIST
+  //      并带上要念的 lineId，但 session.js 与 screens.js 只拿它做计数，
+  //      【没有任何代码真的去播那句台词】—— 所以偏离提示从来没响过。
+  //
+  //      放在 main.js 而不是 voice.js，是因为这属于"模块之间接线"，
+  //      语音模块只需要管好自己的播放队列。
+  bus.on(EVENTS.ASSIST, (p) => {
+    if (!p || !p.lineId) return;
+    // priority=HINT：比旁白高，会被环境音与剧情压住的情况更少；
+    // 不设 interrupt，避免把正说到一半的任务台词硬切掉。
+    voice.speak(p.lineId, { priority: voice.PRIORITY.HINT });
+  });
+
   // 5) 音频解锁：浏览器禁止无用户手势出声，所以挂一次性监听。
   //    必须在载入场景【之前】把探测函数注入好，否则第一次敲杖会落空。
   audio.setProbeFunction(probe.probeCone);
