@@ -122,7 +122,7 @@ await wait(800);
 state.probe = await evalJs('window.__ev.filter(e => e[0] === "cane:probe").map(e => e[1])');
 
 /* 读牌：走到 sign_bikes 旁边，点面板按钮 */
-await evalJs("import('/src/world/player.js').then(m => m.teleport(1.1, -15.5, 0))", true);
+await evalJs("import('/src/world/player.js').then(m => m.teleport(1.1, -5.6, 0))", true);
 await wait(300);
 await click('#t6-panel-toggle');
 await wait(300);
@@ -132,11 +132,11 @@ state.afterRead = await evalJs("import('/src/game/tasks.js').then(m => m.getProg
 state.speakAfterRead = await evalJs('window.__ev.filter(e => e[0] === "speak").map(e => e[1].lineId)');
 
 /* 绕行任务：靠近 → 离开盲道 → 回到盲道 */
-await evalJs("import('/src/world/player.js').then(m => m.teleport(0, -15, 0))", true);
+await evalJs("import('/src/world/player.js').then(m => m.teleport(0, -6, 0))", true);
 await wait(400);
-await evalJs("import('/src/world/player.js').then(m => m.teleport(2, -16.5, 0))", true);
+await evalJs("import('/src/world/player.js').then(m => m.teleport(2, -6.5, 0))", true);
 await wait(400);
-await evalJs("import('/src/world/player.js').then(m => m.teleport(0, -19, 0))", true);
+await evalJs("import('/src/world/player.js').then(m => m.teleport(0, -9, 0))", true);
 await wait(800);
 state.afterAvoid = await evalJs("import('/src/game/tasks.js').then(m => m.getProgress())", true);
 
