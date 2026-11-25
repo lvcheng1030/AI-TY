@@ -32,6 +32,15 @@ export const CONFIG = Object.freeze({
   DEVIATION_LIMIT: 1.5, // 偏离盲道多少米才提示
   DEVIATION_COOLDOWN: 6,// 两次偏离提示的最小间隔，秒
   BLOCKED_COOLDOWN: 1.2,// 两次碰撞提示的最小间隔，秒
+
+  /**
+   * 撞上东西后，隔多久才再说一遍「前面有东西挡着，过不去。」（秒）
+   *
+   * 和 BLOCKED_COOLDOWN 分开：那 1.2 秒控制的是"咚"的一声闷响，
+   * 频率高一点没问题（推墙时本来就会一下一下地撞）。
+   * 但如果每 1.2 秒就念一整句话，玩家会被轰炸到什么都听不见。
+   */
+  BLOCKED_ASSIST_COOLDOWN: 10,
   PULSE_MOVE: 4.0,      // 语音"往前走"走多久（4s × 1.2m/s ≈ 4.8 米）
   PULSE_TURN: 1.0,      // 语音"左转"持续多久（90°/s × 1s = 90°）
 
@@ -73,6 +82,7 @@ const pulses = new Map();
 
 let lastDeviationHint = -Infinity;
 let lastBlockedHint = -Infinity;
+let lastBlockedAssist = -Infinity;
 let elapsed = 0;          // 单局累计秒数，用于冷却计时
 let inited = false;
 let detach = [];          // 键盘监听器的解绑函数
@@ -147,6 +157,12 @@ export function update(dt) {
         obstacleId: fixed.obstacleId,
         x: fixed.x, z: fixed.z
       });
+    }
+    // 撞上之后补一句人话：光有一声闷响，玩家不知道自己是被挡住了，
+    // 还是走不动了、或者游戏坏了。用较长的冷却，避免推着不放时反复播报。
+    if (elapsed - lastBlockedAssist >= CONFIG.BLOCKED_ASSIST_COOLDOWN) {
+      lastBlockedAssist = elapsed;
+      emit(EVENTS.ASSIST, { lineId: 'S_BLOCKED', reason: 'obstacle' });
     }
   }
 
@@ -369,6 +385,7 @@ export function teleport(x, z, heading) {
   elapsed = 0;
   lastDeviationHint = -Infinity;
   lastBlockedHint = -Infinity;
+  lastBlockedAssist = -Infinity;
   clearMovement(); clearTurn(); pulses.clear();
 }
 
