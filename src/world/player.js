@@ -45,15 +45,7 @@ export const CONFIG = Object.freeze({
    */
   PULSE_AFTER_TURN: 2.5,
 
-  /**
-   * 单次按住 W 的时长上限（秒）。到点自动停住，要松手再按才继续。
-   *
-   * 5 秒 ≈ 6 米。为什么要有这个限制：屏幕全黑，一路闷头走下去
-   * 玩家很快就会失去自己在哪的概念，撞上东西也不知道偏了多远。
-   * 每走一小段停下来重新听一次方位，才接近真实盲人的做法
-   * （他们也是一段一段地试探，不是一口气走到底）。
-   */
-  MAX_FORWARD_HOLD: 5.0,
+
 
   /**
    * 速度上限（米/秒）。超过它的一律当作传送，不算行走。
@@ -85,12 +77,6 @@ let elapsed = 0;          // 单局累计秒数，用于冷却计时
 let inited = false;
 let detach = [];          // 键盘监听器的解绑函数
 
-/** 键盘 W 是否正被按住（只有键盘长按才受单次时长上限约束） */
-let kbForwardHeld = false;
-/** 本次长按已经累计了多少秒 */
-let forwardHold = 0;
-/** 是否已因超时被"扣住"—— 必须松手再按才能继续 */
-let holdLatched = false;
 
 /* ------------------------- 纯函数核心 ------------------------- */
 
@@ -133,22 +119,6 @@ export function integrate(s, inp, dt, cfg = CONFIG) {
  */
 export function update(dt) {
   elapsed += dt;
-
-  // 0) 单次长按前进的时长上限。
-  //
-  // 屏幕全黑，闷头走下去会很快失去方位感。到点自动停住并说一句
-  // 「好，停下了。」，让玩家有机会重新听一次环境再决定方向。
-  // 被扣住后必须松手再按 —— 否则浏览器持续发 repeat 的 keydown，
-  // 停一帧就又走了，限制形同虚设。
-  if (kbForwardHeld && !holdLatched) {
-    forwardHold += dt;
-    if (forwardHold >= CONFIG.MAX_FORWARD_HOLD) {
-      forwardHold = 0;
-      holdLatched = true;
-      input.forward = false;
-      emit(EVENTS.ASSIST, { lineId: 'S_STOP', reason: 'system' });
-    }
-  }
 
   // 1) 处理语音触发的限时输入
   for (const [key, remain] of pulses) {
@@ -287,13 +257,6 @@ function bindKeyboard() {
   const onDown = (e) => {
     const key = KEY_MAP[e.code];
     if (key) {
-      // 长按到上限被"扣住"后，必须松手再按才算新手势。
-      // 浏览器按住不放会不停发 repeat 的 keydown，不挡住的话
-      // 松开限制就形同虚设 —— 一帧都停不下来。
-      if (key === 'forward') {
-        if (holdLatched) { e.preventDefault(); return; }
-        if (!e.repeat) { forwardHold = 0; kbForwardHeld = true; }   // 真正按下，重新计时
-      }
       input[key] = true;
       pulses.delete(key);        // 手动按键优先，取消同方向的语音脉冲
       e.preventDefault();
@@ -310,7 +273,6 @@ function bindKeyboard() {
     const key = KEY_MAP[e.code];
     if (key) {
       input[key] = false;
-      if (key === 'forward') { kbForwardHeld = false; holdLatched = false; forwardHold = 0; }
       e.preventDefault();
     }
   };
@@ -319,8 +281,6 @@ function bindKeyboard() {
   const onBlur = () => {
     for (const k of Object.keys(input)) input[k] = false;
     pulses.clear();
-    holdLatched = false;
-    forwardHold = 0;
   };
 
   window.addEventListener('keydown', onDown);
