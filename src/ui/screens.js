@@ -334,14 +334,82 @@ function wireEvents() {
     if (!text) return;
     sendCommand(text, 'text');
     E.typeInput.value = '';
+    // 提交后立刻把焦点还给游戏屏。
+    // 不还的话焦点留在输入框里，之后按 W 只会往框里打字、人不走 ——
+    // 而屏幕全黑，玩家完全看不出为什么"按 W 没反应"。
+    E.typeInput.blur();
+    focusScreen('game');
+    announce('已发送。可以继续用 W 行走。');
   });
 
-  // 打字时不许触发移动：player.js 挂的是 window 上的 keydown，
-  // 而"往前走"里的 W 会让玩家真的走起来。在输入框上截断传播即可，
-  // 默认行为（往框里打字）不受影响。
-  for (const evt of ['keydown', 'keyup']) {
-    E.typeInput.addEventListener(evt, (e) => e.stopPropagation());
-  }
+  // ---- 输入框的按键处理 ----
+  //
+  // 背景：player.js 把 keydown 挂在 window 上，所以焦点在输入框里时，
+  // 打字用的 W/A/S/D 会让玩家真的走起来（"往前走"的拼音里含 w）。
+  // 因此在输入框上截断传播是必要的。
+  //
+  // 但只截不断会造成死锁：焦点一旦落进输入框，W 就只会往框里打字，
+  // 人站着不动 —— 而屏幕全黑，玩家完全看不出为什么"按 W 没反应"。
+  //
+  // 所以这里是【一个】处理器，同时负责填充与放行：
+  //   · Esc            → 退出输入，不结束本局
+  //   · 空框 + 方向键/空格 → 直接退出输入并放行（这些键永远不用于拼音）
+  //   · 空框 + 字母键   → 给一声提示音，告诉玩家"你在输入模式"
+  //   · 其余情况        → 照常拦下，不影响打字
+  //
+  // 注意必须写在同一个监听器里：如果分成两个，先注册的那个
+  // 会先把事件截断，"放行"就永远不生效。
+  const MOVEMENT_KEYS = new Set([
+    'KeyW', 'KeyA', 'KeyS', 'KeyD',
+    'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'
+  ]);
+  let lastTrappedHintAt = 0;
+
+  E.typeInput.addEventListener('keydown', (e) => {
+    // Esc：退出输入
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      E.typeInput.blur();
+      focusScreen('game');
+      announce('已退出输入。可以继续用 W 行走。');
+      return;
+    }
+
+    const empty = E.typeInput.value.trim() === '';
+
+    if (empty && MOVEMENT_KEYS.has(e.code)) {
+      // 方向键与空格不参与拼音输入，可以直接当行走键
+      if (!e.code.startsWith('Key')) {
+        E.typeInput.blur();
+        focusScreen('game');
+        return;                     // 放行，player.js 能收到
+      }
+      // 字母键：不抢走拼音首字母，但要告诉玩家发生了什么
+      const now = Date.now();
+      if (now - lastTrappedHintAt > 2500) {
+        lastTrappedHintAt = now;
+        try { audio.playSfx('hint', { gain: 0.35 }); } catch (_) {}
+        announce('正在输入文字。按 Esc 退出输入，就可以继续行走。');
+      }
+    }
+
+    // 其余一律拦下，避免打字时人物乱走
+    e.stopPropagation();
+  });
+
+  // keyup 不需要判断，一律拦下：keydown 已经决定过要不要放行了，
+  // 若这里放行会造成"按下没走、松开却清了输入"的半状态。
+  E.typeInput.addEventListener('keyup', (e) => e.stopPropagation());
+
+  // 3) 点黑屏任意处（面板之外）也退出输入
+  S.sections.game?.addEventListener('pointerdown', (e) => {
+    if (e.target === E.typeInput) return;
+    if (E.typeInput === document.activeElement) {
+      E.typeInput.blur();
+      focusScreen('game');
+    }
+  });
 
   // 按住说话：手机上不可能按 T 键，语音入口必须有一个可以按住的按钮
   E.talkBtn.addEventListener('pointerdown', (e) => {

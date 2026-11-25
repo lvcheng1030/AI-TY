@@ -217,6 +217,17 @@ function startLoop() {
 
       const p = player.getState();
       audio.setListener({ x: p.x, z: p.z, heading: p.heading });
+
+      // 路面也每帧同步一次，而不是只依赖 surface:changed 事件。
+      //
+      // 原因：player.init() 在音频解锁之前就跑了（解锁要等用户手势），
+      // 那次 surface:changed 事件没有任何订阅者，引擎于是停在默认的
+      // concrete —— 玩家明明站在盲道上，听到的却是水泥脚步。
+      //
+      // setSurface() 内部有"相同就返回"的短路，所以每帧调用没有开销，
+      // 却能让"声音里的路面"永远跟"实际路面"一致。
+      audio.setSurface(p.surface);
+
       audio.updateFootsteps(dt);
     }
   });

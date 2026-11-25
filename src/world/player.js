@@ -151,12 +151,7 @@ export function update(dt) {
   currentSpeed = rawSpeed > CONFIG.MAX_SPEED ? 0 : rawSpeed;
 
   // 5) 路面变化（只在变化时发，不是每帧）
-  const s = scene.surfaceAt(state);
-  if (s !== state.surface) {
-    const previous = state.surface;
-    state.surface = s;
-    emit(EVENTS.SURFACE_CHANGED, { type: s, previous });
-  }
+  applySurface();
 
   // 6) 偏离盲道提示
   checkDeviation();
@@ -206,14 +201,33 @@ export function init() {
     state.x = current.start.x;
     state.z = current.start.z;
     state.heading = current.start.heading;
-    state.surface = scene.surfaceAt(state);
     collision.loadObstacles(current.obstacles);
+    // 起点可能就在盲道上。必须把初始路面广播出去，
+    // 否则音频引擎会停在默认的 concrete —— 玩家站在盲道上听到的却是水泥脚步。
+    applySurface();
   }
 
   bindKeyboard();
   subscribeIntents();
 
   return getState();
+}
+
+/**
+ * 重新计算当前路面，变化时广播。
+ *
+ * 为什么要单独抽出来：`update()` 里本来就做这件事，
+ * 但 init() / teleport() 直接改了位置却没走那条路径，
+ * 结果"传送后路面正确、声音仍是旧路面"。
+ * 这类不一致在纯音频游戏里会直接误导玩家判断。
+ */
+function applySurface() {
+  const s = scene.surfaceAt(state);
+  if (s !== state.surface) {
+    const previous = state.surface;
+    state.surface = s;
+    emit(EVENTS.SURFACE_CHANGED, { type: s, previous });
+  }
 }
 
 /* 键盘映射。同时支持 WASD 与方向键：方向键对手小的玩家和部分键盘布局更友好。 */
@@ -321,7 +335,7 @@ export function getState() {
 export function setPosition(x, z) {
   state.x = x;
   state.z = z;
-  state.surface = scene.surfaceAt(state);
+  applySurface();
 }
 
 /** 传送到起点并复位所有计时 */
@@ -331,7 +345,7 @@ export function teleport(x, z, heading) {
   state.x = typeof x === 'number' ? x : start.x;
   state.z = typeof z === 'number' ? z : start.z;
   state.heading = normalize360(typeof heading === 'number' ? heading : start.heading);
-  state.surface = scene.surfaceAt(state);
+  applySurface();
   elapsed = 0;
   lastDeviationHint = -Infinity;
   lastBlockedHint = -Infinity;
